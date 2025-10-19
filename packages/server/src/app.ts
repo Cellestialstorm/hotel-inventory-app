@@ -4,7 +4,7 @@ import helmet from 'helmet'; // Import helmet
 import morgan from 'morgan'; // Import morgan
 // import compression from 'compression'; // Import compression
 import ApiError from './utils/ApiError';
-// import { errorHandler } from './middleware/errorHandler.middleware';
+import { errorHandler } from './middleware/errorHandler.middleware';
 // import ApiResponse from './utils/ApiResponse';
 
 // TODO: Import error handling middleware
@@ -51,7 +51,7 @@ app.use((_req, _res, next) => {
   next(new ApiError(404, 'Not Found'));
 });
 
-// app.use(errorHandler);
+app.use(errorHandler);
 
 
 export default app; // Export the configured app instance
