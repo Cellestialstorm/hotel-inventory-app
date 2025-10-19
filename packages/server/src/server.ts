@@ -1,39 +1,51 @@
-import express from 'express';
-import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 
-// --- Important ---
-// 1. Configure dotenv with the correct path to the root .env file.
-//    This line MUST come before any other local imports that need environment variables.
+// --- Important: Configure dotenv FIRST ---
+// Load environment variables from the root .env file
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
-// 2. Now, import your database module.
+// --- Imports (after dotenv config) ---
+import app from './app'; // Import the configured Express app
 import { connectDB } from './config/database';
+// TODO: Import Winston logger instance
 
-// 3. Initialize the database connection.
-connectDB();
-
-const app = express();
-const PORT = process.env.PORT || 5000;
-
-// --- Middleware ---
-// Enable Cross-Origin Resource Sharing
-app.use(cors());
-// Parse incoming JSON requests
-app.use(express.json());
-
-// --- Routes ---
-// A simple health check route to confirm the server is running.
-app.get('/api/health', (_req, res) => {
-  res.status(200).json({ status: 'ok', message: 'Server is healthy and running' });
-});
-
-// TODO: Add your application-specific routes here
-// Example: app.use('/api/inventory', inventoryRoutes);
+// --- Database Connection ---
+connectDB(); // Initialize the database connection
 
 // --- Server Startup ---
-app.listen(PORT, () => {
+const PORT = process.env.PORT || 5000;
+
+const server = app.listen(PORT, () => {
+  // TODO: Use Winston logger instead of console.log
   console.log(`🚀 Server is running on port ${PORT}`);
+  console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
 });
 
+// --- Graceful Shutdown Handling (Optional but Recommended) ---
+process.on('unhandledRejection', (err) => {
+  console.error('UNHANDLED REJECTION! 💥 Shutting down...', err);
+  // TODO: Use Winston logger
+  server.close(() => {
+    process.exit(1);
+  });
+});
+
+process.on('SIGTERM', () => {
+  console.log('👋 SIGTERM RECEIVED. Shutting down gracefully');
+  // TODO: Use Winston logger
+  server.close(() => {
+    console.log('💥 Process terminated!');
+    // Close DB connection if needed here
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('👋 SIGINT RECEIVED. Shutting down gracefully');
+   // TODO: Use Winston logger
+  server.close(() => {
+    console.log('💥 Process terminated!');
+     // Close DB connection if needed here
+    process.exit(0); // Explicitly exit for SIGINT
+  });
+});
