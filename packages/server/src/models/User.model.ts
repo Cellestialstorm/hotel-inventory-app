@@ -1,29 +1,19 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
-/**
- * Enum for defining user roles. Using an enum prevents typos
- * and ensures role consistency across the application.
- */
-export enum UserRole {
-  ADMIN = 'ADMIN', // Can manage users, hotels, and system settings.
-  MANAGER = 'MANAGER', // Can manage inventory and staff for their assigned hotel/department.
-  STAFF = 'STAFF', // Can perform basic inventory transactions.
-}
+// Import the shared enum and types using the package reference
+import { UserRole } from '@hotel-inventory/shared';
+import type { IUSER } from '@hotel-inventory/shared';
 
 /**
  * TypeScript interface for the User document, providing type safety.
+ * Extends the shared IUSER interface with Mongoose Document properties.
  */
-export interface IUser extends Document {
-  userId: string;
-  username: string;
-  password?: string; // Optional because it's excluded from queries by default.
-  role: UserRole;
+export interface IUser extends Document, Omit<IUSER, 'hotelID' | 'departmentID' | 'userID'> {
+  userId: string; // Using camelCase to match existing schema
   assignedHotelId: mongoose.Schema.Types.ObjectId;
   assignedDepartmentId: mongoose.Schema.Types.ObjectId;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  password?: string; // Optional because it's excluded from queries by default.
   comparePassword(password: string): Promise<boolean>; // Method for password validation.
 }
 
@@ -44,6 +34,18 @@ const UserSchema: Schema<IUser> = new Schema(
       unique: true,
       trim: true,
       lowercase: true,
+    },
+    email: {
+      type: String,
+      required: [true, 'Email is required.'],
+      unique: true,
+      trim: true,
+      lowercase: true,
+    },
+    fullName: {
+      type: String,
+      required: [true, 'Full name is required.'],
+      trim: true,
     },
     password: {
       type: String,

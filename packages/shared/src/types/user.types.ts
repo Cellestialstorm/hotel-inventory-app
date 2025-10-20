@@ -11,7 +11,6 @@ export interface IUSER {
     createdAt: Date;
     updatedAt: Date;
     isActive?: boolean;
-
 }
 
 export type IUserRole = UserRole;

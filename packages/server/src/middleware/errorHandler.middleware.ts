@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import ApiError from '../utils/ApiError';
-import logger from '../config/logger';
+import logger from '../utils/logger';
 
 // Error handling middleware
 export const errorHandler = (
