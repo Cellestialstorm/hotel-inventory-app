@@ -1,7 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
-
-// Import the shared enum and types using the package reference
 import { UserRole } from '@hotel-inventory/shared';
 import type { IUSER } from '@hotel-inventory/shared';
 
@@ -10,11 +8,11 @@ import type { IUSER } from '@hotel-inventory/shared';
  * Extends the shared IUSER interface with Mongoose Document properties.
  */
 export interface IUser extends Document, Omit<IUSER, 'hotelID' | 'departmentID' | 'userID'> {
-  userId: string; // Using camelCase to match existing schema
+  userId: string;
   assignedHotelId: mongoose.Schema.Types.ObjectId;
   assignedDepartmentId: mongoose.Schema.Types.ObjectId;
-  password?: string; // Optional because it's excluded from queries by default.
-  comparePassword(password: string): Promise<boolean>; // Method for password validation.
+  password?: string;
+  comparePassword(password: string): Promise<boolean>;
 }
 
 /**
@@ -113,8 +111,6 @@ UserSchema.methods.comparePassword = async function (
   enteredPassword: string
 ): Promise<boolean> {
   // `this.password` is available on this document instance for comparison.
-  // Note: For this method to work during login, you must explicitly fetch the user
-  // with the password field, e.g., `User.findOne({..}).select('+password')`.
   return await bcrypt.compare(enteredPassword, this.password);
 };
 

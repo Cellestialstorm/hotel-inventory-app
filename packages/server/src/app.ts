@@ -1,24 +1,21 @@
 import express from 'express';
 import cors from 'cors';
-import helmet from 'helmet'; // Import helmet
-import morgan from 'morgan'; // Import morgan
-import cookieParser from 'cookie-parser'; // Import cookie-parser
-// import compression from 'compression'; // Import compression
+import helmet from 'helmet';
+import morgan from 'morgan';
+// import compression from 'compression';
+import cookieParser from 'cookie-parser';
 import ApiError from './utils/ApiError';
+
 import { errorHandler } from './middleware/errorHandler.middleware';
-// import ApiResponse from './utils/ApiResponse';
-import authRoutes from './routes/auth.routes';
 import { generalLimiter } from './config/rateLimiters';
 
-// TODO: Import error handling middleware
-// TODO: Import your application routes
+import authRoutes from './routes/auth.routes';
+import departmentRoutes from './routes/department.routes';
+import hotelRoutes from './routes/hotel.routes';
 
 const app = express();
 
 // --- Core Middleware ---
-
-// Configure CORS - *Replace '*' with your frontend URL in production*
-// Example: cors({ origin: 'http://localhost:3000', credentials: true })
 app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
 
 // Set various HTTP headers for security
@@ -30,33 +27,29 @@ app.use(morgan('dev'));
 // Parse incoming JSON requests
 app.use(express.json({ limit: '16kb' })); // Example limit
 
-// Parse URL-encoded requests (optional, if using forms)
+// Parse URL-encoded requests
 app.use(express.urlencoded({ extended: true, limit: '16kb' }));
 
 // Parse cookies
 app.use(cookieParser());
+
+// Set Limits
+app.use('/api', generalLimiter);
 
 // // Compress responses
 // app.use(compression()); // Compress responses
 
 // --- Routes ---
 
-app.use('/api', generalLimiter);
-
-// Simple health check route (can be moved to a dedicated router later)
 app.get('/api/health', (_req, res) => {
   res.status(200).json({ status: 'ok', message: 'Server is healthy' });
 });
 
 app.use('/api/auth', authRoutes);
-
-// TODO: Mount your application-specific routers here
-// Example:
-// import inventoryRoutes from './routes/inventory.routes';
-// app.use('/api/inventory', inventoryRoutes);
+app.use('/api/departments', departmentRoutes);
+app.use('/api/hotels', hotelRoutes);
 
 // --- Error Handling Middleware ---
-// TODO: Add 404 handler for unmatched routes
 app.use((_req, _res, next) => {
   next(new ApiError(404, 'Not Found'));
 });
@@ -64,4 +57,4 @@ app.use((_req, _res, next) => {
 app.use(errorHandler);
 
 
-export default app; // Export the configured app instance
+export default app;

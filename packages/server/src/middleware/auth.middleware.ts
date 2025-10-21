@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import ApiError from "../utils/ApiError";
-import { verifyToken, ITokenPayload } from "../utils/jwt.util";
-import logger from "../utils/logger";
+import ApiError from "@/utils/ApiError";
+import { verifyToken, ITokenPayload } from "@/utils/jwt.util";
+import logger from "@/utils/logger";
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || 'your_access_secret_key_dev';
 
@@ -24,6 +24,7 @@ export const authenticateToken = (req: Request, _res: Response, next: NextFuncti
 
         req.user = payload;
         logger.debug(`User authenticated: ${payload.username} (ID: ${payload.userId})`);
+        next();
     } catch (error) {
         logger.warn(`Authentication failed: ${error instanceof Error ? error.message : 'Invalid token'}`, { tokenProvided: !!token});
         next(error);

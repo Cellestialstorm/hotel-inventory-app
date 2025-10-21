@@ -1,16 +1,3 @@
-export enum UserRole {
-  ADMIN = 'ADMIN',
-  MANAGER = 'MANAGER',
-  STAFF = 'STAFF',
-}
-
-export enum TransactionType {
-  OPENING_BALANCE = 'OPENING_BALANCE',
-  ADDED = 'ADDED',
-  RETURNED_TO_VENDOR = 'RETURNED_TO_VENDOR',
-  DAMAGE = 'DAMAGE',
-  TRANSFER_IN_DEPT = 'TRANSFER_IN_DEPT',
-  TRANSFER_OUT_DEPT = 'TRANSFER_OUT_DEPT',
-  TRANSFER_IN_HOTEL = 'TRANSFER_IN_HOTEL',
-  TRANSFER_OUT_HOTEL = 'TRANSFER_OUT_HOTEL',
-}
+export * from './status.enum';
+export * from './transactionType.enum';
+export * from './userRole.enum';
