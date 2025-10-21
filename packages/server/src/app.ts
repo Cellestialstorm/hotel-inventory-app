@@ -2,10 +2,13 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet'; // Import helmet
 import morgan from 'morgan'; // Import morgan
+import cookieParser from 'cookie-parser'; // Import cookie-parser
 // import compression from 'compression'; // Import compression
 import ApiError from './utils/ApiError';
 import { errorHandler } from './middleware/errorHandler.middleware';
 // import ApiResponse from './utils/ApiResponse';
+import authRoutes from './routes/auth.routes';
+import { generalLimiter } from './config/rateLimiters';
 
 // TODO: Import error handling middleware
 // TODO: Import your application routes
@@ -30,15 +33,22 @@ app.use(express.json({ limit: '16kb' })); // Example limit
 // Parse URL-encoded requests (optional, if using forms)
 app.use(express.urlencoded({ extended: true, limit: '16kb' }));
 
+// Parse cookies
+app.use(cookieParser());
+
 // // Compress responses
 // app.use(compression()); // Compress responses
 
 // --- Routes ---
 
+app.use('/api', generalLimiter);
+
 // Simple health check route (can be moved to a dedicated router later)
 app.get('/api/health', (_req, res) => {
   res.status(200).json({ status: 'ok', message: 'Server is healthy' });
 });
+
+app.use('/api/auth', authRoutes);
 
 // TODO: Mount your application-specific routers here
 // Example:

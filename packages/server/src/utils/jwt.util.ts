@@ -11,7 +11,7 @@ if (ACCESS_TOKEN_SECRET === 'your_access_secret_key_dev' || REFRESH_TOKEN_SECRET
 }
 
 export interface ITokenPayload {
-    userID: string;
+    userId: string;
     username: string;
     role: string;
 }
@@ -32,7 +32,7 @@ export const generateAccessToken = (payload: ITokenPayload): string => {
  * @returns The generated Refresh Token.
  */
 
-export const generateRefreshToken = (payload: Pick<ITokenPayload, 'userID'>): string => {
+export const generateRefreshToken = (payload: Pick<ITokenPayload, 'userId'>): string => {
     return jwt.sign(payload, REFRESH_TOKEN_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRY } as SignOptions);
 };
 

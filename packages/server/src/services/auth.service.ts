@@ -90,13 +90,13 @@ const login = async (credentials: ILoginRequest): Promise<{ accessToken: string;
     }
 
     const payload: ITokenPayload = {
-        userID: user.userId,  // Use userId from user object (which is the server-side naming)
+        userId: user.userId,  // Use userId from user object (which is the server-side naming)
         username: user.username,
         role: user.role,
     };
 
     const accessToken = generateAccessToken(payload);
-    const refreshToken = generateRefreshToken({ userID: user.userId });  // Use userId from user object
+    const refreshToken = generateRefreshToken({ userId: user.userId });  // Use userId from user object
 
     const userToReturn = user.toObject();
     delete userToReturn.password;
@@ -115,7 +115,7 @@ const login = async (credentials: ILoginRequest): Promise<{ accessToken: string;
 const validateToken = (token: string): ITokenPayload => {
     try {
         const payload = verifyToken<ITokenPayload>(token, ACCESS_TOKEN_SECRET);
-        logger.debug(`Token validated successfully for user ID: ${payload.userID}`);
+        logger.debug(`Token validated successfully for user ID: ${payload.userId}`);
         return payload;
     } catch (error) {
         logger.warn(`Token validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { error });
@@ -145,7 +145,7 @@ const refreshToken = async (refreshToken: string): Promise<{ accessToken: string
         }
 
         const newPayload: ITokenPayload = {
-            userID: user.userId,  // Use userId from user object
+            userId: user.userId,  // Use userId from user object
             username: user.username,
             role: user.role,
         };
