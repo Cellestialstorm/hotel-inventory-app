@@ -12,12 +12,12 @@ router.post('/', checkAdminOnly, DepartmentController.createDepartment);
 
 router.put('/:id', checkAdminOnly, DepartmentController.updateDepartment);
 
-router.get('/', checkRole([UserRole.ADMIN, UserRole.MANAGER]), DepartmentController.getAllDepartments);
+router.get('/', checkRole([UserRole.ADMIN, UserRole.USER]), DepartmentController.getAllDepartments);
 
-router.get('/hotel/:hotelId', checkRole([UserRole.ADMIN, UserRole.MANAGER]), DepartmentController.getAllDepartments);
+router.get('/hotel/:hotelId', checkRole([UserRole.ADMIN, UserRole.USER]), DepartmentController.getAllDepartments);
 
 router.delete('/:id', checkAdminOnly, DepartmentController.deleteDepartment);
 
-router.get('/:id', checkRole([UserRole.ADMIN, UserRole.MANAGER]), DepartmentController.getDepartmentById);
+router.get('/:id', checkRole([UserRole.ADMIN, UserRole.USER]), DepartmentController.getDepartmentById);
 
 export default router;

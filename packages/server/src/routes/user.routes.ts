@@ -9,7 +9,7 @@ const router = express.Router();
 router.post('/users', authenticateToken, checkAdminOnly);
 
 // Routes accessed by admin and anagers
-router.get('/users', authenticateToken, checkRole([UserRole.ADMIN, UserRole.MANAGER]));
+router.get('/users', authenticateToken, checkRole([UserRole.ADMIN, UserRole.USER]));
 
 // Routes accessed by logged in users
 router.get('/users/me', authenticateToken);

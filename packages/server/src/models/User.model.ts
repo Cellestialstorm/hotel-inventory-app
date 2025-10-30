@@ -1,24 +1,12 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { UserRole } from '@hotel-inventory/shared';
 import type { IUSER } from '@hotel-inventory/shared';
 
 /**
- * TypeScript interface for the User document, providing type safety.
- * Extends the shared IUSER interface with Mongoose Document properties.
- */
-export interface IUser extends Document, Omit<IUSER, 'hotelID' | 'departmentID' | 'userID'> {
-  userId: string;
-  assignedHotelId: mongoose.Schema.Types.ObjectId;
-  assignedDepartmentId: mongoose.Schema.Types.ObjectId;
-  password?: string;
-  comparePassword(password: string): Promise<boolean>;
-}
-
-/**
  * Mongoose schema for the User model.
  */
-const UserSchema: Schema<IUser> = new Schema(
+const UserSchema: Schema<IUSER> = new Schema(
   {
     userId: {
       type: String,
@@ -33,28 +21,16 @@ const UserSchema: Schema<IUser> = new Schema(
       trim: true,
       lowercase: true,
     },
-    email: {
-      type: String,
-      required: [true, 'Email is required.'],
-      unique: true,
-      trim: true,
-      lowercase: true,
-    },
-    fullName: {
-      type: String,
-      required: [true, 'Full name is required.'],
-      trim: true,
-    },
     password: {
       type: String,
       required: [true, 'Password is required.'],
       minlength: [6, 'Password must be at least 6 characters long.'],
-      select: false, // CRITICAL: Prevents the password hash from being returned in query results.
+      select: false,
     },
     role: {
       type: String,
       enum: Object.values(UserRole), // Restricts values to the defined roles.
-      default: UserRole.STAFF,
+      default: UserRole.USER,
       required: true,
     },
     assignedHotelId: {
@@ -73,7 +49,6 @@ const UserSchema: Schema<IUser> = new Schema(
     },
   },
   {
-    // This option automatically adds `createdAt` and `updatedAt` fields.
     timestamps: true,
   }
 );
@@ -85,7 +60,7 @@ const UserSchema: Schema<IUser> = new Schema(
  * This middleware runs only if the password field is new or has been modified.
  * It uses a regular function to ensure `this` correctly refers to the document instance.
  */
-UserSchema.pre<IUser>('save', async function (next) {
+UserSchema.pre<IUSER>('save', async function (next) {
   if (!this.isModified('password') || !this.password) {
     return next();
   }
@@ -114,6 +89,6 @@ UserSchema.methods.comparePassword = async function (
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-const User = mongoose.model<IUser>('User', UserSchema);
+const User = mongoose.model<IUSER>('User', UserSchema);
 
 export default User;

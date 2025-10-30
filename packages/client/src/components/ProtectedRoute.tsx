@@ -7,10 +7,11 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps) => {
-  const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-  const authToken = localStorage.getItem('authToken');
+  const authToken = sessionStorage.getItem('accessToken');
+  const userData = sessionStorage.getItem('user');
+  const currentUser = userData ? JSON.parse(userData) : null;
 
-  if (!authToken || !currentUser.id) {
+  if (!authToken || !currentUser) {
     return <Navigate to="/login" replace />;
   }
 

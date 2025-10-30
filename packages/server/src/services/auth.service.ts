@@ -1,9 +1,11 @@
 import mongoose from 'mongoose';
-import User, { IUser } from '../models/User.model';
-import ApiError from '../utils/ApiError';
-import { generateAccessToken, generateRefreshToken, verifyToken, ITokenPayload } from '../utils/jwt.util';
+import User from '@/models/User.model';
+import { IUSER } from '@hotel-inventory/shared';
+import ApiError from '@/utils/ApiError';
+import { generateAccessToken, generateRefreshToken, verifyToken, ITokenPayload } from '@/utils/jwt.util';
 import { ILoginRequest, IRegisterRequest } from '@hotel-inventory/shared';
-import logger from '../utils/logger';
+import logger from '@/utils/logger';
+import { UserRole } from '@hotel-inventory/shared';
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || 'your_access_token_secret';
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || 'your_refresh_token_secret';
@@ -14,16 +16,16 @@ const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || 'your_refresh_t
  * @returns The created user object (without password).
  */
 
-const register = async (userData: IRegisterRequest): Promise<Omit<IUser, 'password' | 'comparePassword'>> => {
+const register = async (userData: IRegisterRequest): Promise<Omit<IUSER, 'password' | 'comparePassword'>> => {
     // Note: IRegisterRequest doesn't have assignedHotelId and assignedDepartmentId directly
     // These would need to be passed separately or handled differently
-    const { username, email, password, role, hotelID, departmentID, fullName } = userData;
+    const { username, password, role = UserRole.USER, assignedDepartmentId, assignedHotelId } = userData;
 
-    if (!username || !email || !password || !role || !hotelID || !departmentID || !fullName) {
+    if (!username || !password || !assignedHotelId || !assignedDepartmentId) {
         throw new ApiError(400, 'Missing required fields', 'Validation_Error');
     }
 
-    const existingUser = await User.findOne({ $or: [{ username }, { email }] }).lean();
+    const existingUser = await User.findOne({ $or: [{ username }, { assignedHotelId }] }).lean();
     if (existingUser) {
         throw new ApiError(409, 'Username or email already exists', 'Conflict_Error');
     }
@@ -33,12 +35,10 @@ const register = async (userData: IRegisterRequest): Promise<Omit<IUser, 'passwo
     const newUser = new User({
         userId: uniqueUserId,
         username,
-        email,
-        fullName,
         password,
         role,
-        assignedHotelId: hotelID,  // Map hotelID from shared type to assignedHotelId in server model
-        assignedDepartmentId: departmentID,  // Map departmentID from shared type to assignedDepartmentId in server model
+        assignedHotelId: assignedHotelId,  // Map hotelID from shared type to assignedHotelId in server model
+        assignedDepartmentId: assignedDepartmentId,  // Map departmentID from shared type to assignedDepartmentId in server model
         isActive: true,
     });
 
@@ -63,7 +63,7 @@ const register = async (userData: IRegisterRequest): Promise<Omit<IUser, 'passwo
 * @returns An object containing the access and refresh tokens.
 */
 
-const login = async (credentials: ILoginRequest): Promise<{ accessToken: string; refreshToken: string; user: Omit<IUser, 'password' | 'comparePassword'> }> => {
+const login = async (credentials: ILoginRequest): Promise<{ accessToken: string; refreshToken: string; user: Omit<IUSER, 'password' | 'comparePassword'> }> => {
     const { username, password } = credentials;
 
     if (!username || !password) {

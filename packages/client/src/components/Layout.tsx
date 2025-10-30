@@ -20,6 +20,8 @@ import { Home, Package, BarChart3, Settings, LogOut, User, Menu, X } from 'lucid
 import { IUser, IHotel, IDepartment } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { useAuth } from '@/context/AuthContext';
+import { UserRole } from '@hotel-inventory/shared';
 
 interface LayoutProps {
   children: ReactNode;
@@ -74,20 +76,22 @@ const Layout = ({ children }: LayoutProps) => {
     navigate('/login');
   };
 
+  const { user } = useAuth();
+
   const navigation = [
     { name: 'Dashboard', path: '/dashboard', icon: Home },
     { name: 'Inventory', path: '/inventory', icon: Package },
     { name: 'Reports', path: '/reports', icon: BarChart3 },
-    ...(currentUser?.role === 'ADMIN' ? [{ name: 'Admin', path: '/admin', icon: Settings }] : []),
+    ...(user?.role === UserRole.ADMIN ? [{ name: 'Admin', path: '/admin', icon: Settings }] : []),
   ];
 
   const filteredDepartments = departments.filter(d => d.hotelId === selectedHotel);
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
-      case 'ADMIN':
+      case UserRole.ADMIN:
         return 'destructive';
-      case 'MANAGER':
+      case UserRole.USER:
         return 'default';
       default:
         return 'secondary';

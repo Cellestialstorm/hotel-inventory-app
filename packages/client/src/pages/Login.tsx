@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,7 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Eye, EyeOff, Package } from 'lucide-react';
 import { toast } from 'sonner';
-import { mockUsers } from '@/lib/mockData';
+import { useAuth } from '../context/AuthContext';
+import apiClient from '../api/axios';
+import { UserRole, IClientUser } from '@hotel-inventory/shared';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -15,7 +17,11 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
+
+  const from = location.state?.from?.pathname || '/dashboard';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,26 +33,43 @@ const Login = () => {
 
     setLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      const user = mockUsers.find(u => u.username === username);
-      
-      if (user && password === 'password123') {
-        localStorage.setItem('currentUser', JSON.stringify(user));
-        localStorage.setItem('authToken', 'mock-token-' + user.id);
-        
-        if (rememberMe) {
-          localStorage.setItem('rememberMe', 'true');
+    try {
+      const response = await apiClient.post<{ data: { accessToken: string; user: IClientUser }, message: string }>('/auth/login', {
+        username,
+        password,
+      });
+
+      const { accessToken, user } = response.data.data;
+
+      if (accessToken && user) {
+        login(accessToken, user);
+        toast.success(response.data.message || 'Login Successful!');
+
+        console.log('User after login:', user);
+        console.log('User role:', user.role);
+
+        switch (user.role) {
+          case UserRole.ADMIN:
+            console.log('Stored token:', sessionStorage.getItem('accessToken'));
+            navigate('/dashboard', { replace: true });
+            break;
+          case UserRole.USER:
+            navigate('/dashboard', { replace: true });
+            break;
+          default:
+            navigate(from, { replace: true });
         }
-        
-        toast.success('Login successful!');
-        navigate('/dashboard');
       } else {
-        toast.error('Invalid username or password');
+        toast.error('Login Failed: Invalid response from server.');
       }
-      
+    } catch (err: any) {
+      console.error('Login error:', err);
+
+      const message = err.response?.data?.message || err.message || 'Login Failed. Please check credentials.';
+      toast.error(message);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (

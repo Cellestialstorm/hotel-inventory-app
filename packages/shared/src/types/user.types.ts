@@ -1,16 +1,17 @@
 import { UserRole } from "../enums";
+import mongoose, { Document } from "mongoose";
 
-export interface IUSER {
-    userID: string;
+export interface IUSER extends Document {
+    userId: string;
     username: string;
     role: UserRole;
-    hotelID: string;
-    departmentID: string;
-    email: string;
-    fullName: string;
+    assignedHotelId: mongoose.Types.ObjectId,
+    assignedDepartmentId: mongoose.Types.ObjectId,
+    password?: string;
     createdAt: Date;
     updatedAt: Date;
     isActive?: boolean;
+    comparePassword(password: string): Promise<boolean>;
 }
 
 export type IUserRole = UserRole;

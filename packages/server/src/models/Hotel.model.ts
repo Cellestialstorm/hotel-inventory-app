@@ -1,9 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { IHotel as ISharedHotel } from '@hotel-inventory/shared';
 
-export interface IHotelDocument extends Document, Omit<ISharedHotel, 'hotelId'> {
-    hotelId: string;
-}
+export interface IHotelDocument extends Document, Omit<ISharedHotel, '_id'> {}
 
 const HotelSchema: Schema<IHotelDocument> = new Schema(
     {

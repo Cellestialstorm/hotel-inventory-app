@@ -4,14 +4,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { IUser, IHotel, IDepartment } from '@/types';
+import { IUSER, IHotel, IDepartment } from '@hotel-inventory/shared';
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
+import { UserRole } from '@hotel-inventory/shared';
+import apiClient from '@/api/axios';
+import { useAuth } from '@/context/AuthContext';
 
 interface UserModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  user?: IUser | null;
+  user?: IUSER | null;
   onSave: () => void;
 }
 
@@ -20,45 +23,67 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
     username: '',
     password: '',
     confirmPassword: '',
-    role: 'STAFF' as 'ADMIN' | 'MANAGER' | 'STAFF',
-    hotelId: '',
-    departmentId: '',
+    role: UserRole.USER,
+    assignedHotelId: '',
+    assignedDepartmentId: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [hotels, setHotels] = useState<IHotel[]>([]);
   const [departments, setDepartments] = useState<IDepartment[]>([]);
+  const [filteredDepartments, setFilteredDepartments] = useState<IDepartment[]>([]);
+
+  const { accessToken } = useAuth();
 
   useEffect(() => {
     if (open) {
-      const allHotels: IHotel[] = JSON.parse(localStorage.getItem('hotels') || '[]');
-      const allDepartments: IDepartment[] = JSON.parse(localStorage.getItem('departments') || '[]');
-      setHotels(allHotels);
-      setDepartments(allDepartments);
-    }
+      fetchHotelsAndDepartments();
 
-    if (user) {
-      setFormData({
-        username: user.username,
-        password: '',
-        confirmPassword: '',
-        role: user.role,
-        hotelId: user.hotelId || '',
-        departmentId: user.departmentId || '',
-      });
-    } else {
-      setFormData({
-        username: '',
-        password: '',
-        confirmPassword: '',
-        role: 'STAFF',
-        hotelId: '',
-        departmentId: '',
-      });
+      if (user) {
+        setFormData({
+          username: user.username || '',
+          password: '',
+          confirmPassword: '',
+          role: user.role || UserRole.USER,
+          assignedHotelId: user.assignedHotelId ? user.assignedHotelId.toString() : '',
+          assignedDepartmentId: user.assignedDepartmentId ? user.assignedDepartmentId.toString() : '',
+        });
+      } else {
+        setFormData({
+          username: '',
+          password: '',
+          confirmPassword: '',
+          role: UserRole.USER,
+          assignedHotelId: '',
+          assignedDepartmentId: '',
+        });
+      }
+      setErrors({});
     }
-    setErrors({});
-  }, [user, open]);
+  }, [open, user]);
+
+  const fetchHotelsAndDepartments = async () => {
+    try {
+      if (!accessToken) {
+        console.error("No access token found");
+        return
+      }
+
+      const [hotelRes, deptRes] = await Promise.all([
+        apiClient.get('/hotels', {
+          headers: { Authorization: `Bearer ${sessionStorage.getItem('accessToken')}` },
+        }),
+        apiClient.get('/departments', {
+          headers: { Authorization: `Bearer ${sessionStorage.getItem('accessToken')}` },
+        }),
+      ]);
+      setHotels(hotelRes.data.data || []);
+      setDepartments(deptRes.data.data || []);
+    } catch (err) {
+      toast.error('Failed to load hotels or departments');
+    }
+  };
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -79,11 +104,11 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
       newErrors.confirmPassword = 'Passwords do not match';
     }
 
-    if (formData.role !== 'ADMIN') {
-      if (!formData.hotelId) {
+    if (formData.role === UserRole.USER) {
+      if (!formData.assignedHotelId) {
         newErrors.hotelId = 'Hotel is required for non-admin users';
       }
-      if (!formData.departmentId) {
+      if (!formData.assignedDepartmentId) {
         newErrors.departmentId = 'Department is required for non-admin users';
       }
     }
@@ -91,6 +116,20 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
+  const handleHotelChange = (hotelId: string) => {
+    setFormData({
+      ...formData,
+      assignedHotelId: hotelId,
+      assignedDepartmentId: '',
+    });
+
+    const filtered = departments.filter(
+      (dept) => dept.hotelId === hotelId || dept.hotelId === hotelId
+    );
+
+    setFilteredDepartments(filtered);
+  }
 
   const handleSubmit = () => {
     if (!validate()) {
@@ -100,42 +139,29 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
 
     setLoading(true);
 
-    setTimeout(() => {
-      const users: IUser[] = JSON.parse(localStorage.getItem('users') || '[]');
+    try {
+      const payload = {
+        username: formData.username,
+        password: formData.password,
+        role: formData.role,
+        assignedHotelId:
+          formData.role === UserRole.USER ? formData.assignedHotelId : undefined,
+        assignedDepartmentId:
+          formData.role === UserRole.USER ? formData.assignedDepartmentId : undefined,
+      };
 
-      if (user) {
-        const index = users.findIndex(u => u.id === user.id);
-        if (index !== -1) {
-          users[index] = {
-            ...users[index],
-            username: formData.username,
-            role: formData.role,
-            hotelId: formData.role !== 'ADMIN' ? formData.hotelId : undefined,
-            departmentId: formData.role !== 'ADMIN' ? formData.departmentId : undefined,
-          };
-        }
-        toast.success('User updated successfully');
-      } else {
-        const newUser: IUser = {
-          id: 'u' + Date.now(),
-          username: formData.username,
-          role: formData.role,
-          hotelId: formData.role !== 'ADMIN' ? formData.hotelId : undefined,
-          departmentId: formData.role !== 'ADMIN' ? formData.departmentId : undefined,
-          isActive: true,
-        };
-        users.push(newUser);
-        toast.success('User created successfully');
-      }
-
-      localStorage.setItem('users', JSON.stringify(users));
-      setLoading(false);
+      apiClient.post('/auth/register', payload);
+      toast.success('User registered successfully!');
       onSave();
       onOpenChange(false);
-    }, 500);
+    } catch (error: any) {
+      console.error(error);
+      const message = error.respense?.data?.message || 'Failed to register user. Try again.';
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
   };
-
-  const filteredDepartments = departments.filter(d => d.hotelId === formData.hotelId);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -146,7 +172,7 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="username">Username *</Label>
+            <Label htmlFor="username">User Name *</Label>
             <Input
               id="username"
               value={formData.username}
@@ -189,31 +215,17 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
             {errors.confirmPassword && <p className="text-sm text-danger">{errors.confirmPassword}</p>}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="role">Role *</Label>
-            <Select value={formData.role} onValueChange={(value: any) => setFormData({ ...formData, role: value, hotelId: '', departmentId: '' })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ADMIN">Admin</SelectItem>
-                <SelectItem value="MANAGER">Manager</SelectItem>
-                <SelectItem value="STAFF">Staff</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           {formData.role !== 'ADMIN' && (
             <>
               <div className="space-y-2">
                 <Label htmlFor="hotel">Hotel *</Label>
-                <Select value={formData.hotelId} onValueChange={(value) => setFormData({ ...formData, hotelId: value, departmentId: '' })}>
+                <Select value={formData.assignedHotelId} onValueChange={(value) => handleHotelChange(value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select hotel" />
                   </SelectTrigger>
                   <SelectContent>
-                    {hotels.map(hotel => (
-                      <SelectItem key={hotel.id} value={hotel.id}>{hotel.name}</SelectItem>
+                    {hotels.map((hotel) => (
+                      <SelectItem key={hotel._id} value={hotel._id}>{hotel.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -222,13 +234,13 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
 
               <div className="space-y-2">
                 <Label htmlFor="department">Department *</Label>
-                <Select value={formData.departmentId} onValueChange={(value) => setFormData({ ...formData, departmentId: value })}>
+                <Select value={formData.assignedDepartmentId} onValueChange={(value) => setFormData({ ...formData, assignedDepartmentId: value })} disabled={!formData.assignedHotelId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
                     {filteredDepartments.map(dept => (
-                      <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                      <SelectItem key={dept.departmentId} value={dept.departmentId}>{dept.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

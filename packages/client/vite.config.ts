@@ -6,11 +6,12 @@ import path from "path";
 export default defineConfig({
   server: {
     host: "::",
-    port: 8080,
+    port: 3000,
   },
   plugins: [react()],
   resolve: {
     alias: {
+      "@hotel-inventory/shared": path.resolve(__dirname, "../shared/src"),
       "@": path.resolve(__dirname, "./src"),
     },
   },

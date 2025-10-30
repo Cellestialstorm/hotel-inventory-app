@@ -5,28 +5,35 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, Edit, Trash2 } from 'lucide-react';
-import { IUser, IHotel, IDepartment } from '@/types';
+import { IUSER, IHotel, IDepartment } from '@hotel-inventory/shared';
 import UserModal from '@/components/UserModal';
+import DepartmentModal from '@/components/DepartmentModal';
+import HotelModal from '@/components/HotelModal';
 import DeleteConfirmDialog from '@/components/DeleteConfirmDialog';
 import { toast } from 'sonner';
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState('users');
-  const [users, setUsers] = useState<IUser[]>([]);
+  const [users, setUsers] = useState<IUSER[]>([]);
   const [hotels, setHotels] = useState<IHotel[]>([]);
+  const [selectedHotel, setSelectedHotel] = useState<IHotel | null>(null);
+  const [hotelModalOpen, setHotelModalOpen] = useState(false);
   const [departments, setDepartments] = useState<IDepartment[]>([]);
+  const [selectedDepartment, setSelectedDepartment] = useState<IDepartment | null>(null);
+  const [departmentModalOpen, setDepartmentModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<IUser | null>(null);
+  const [selectedUser, setSelectedUser] = useState<IUSER | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
 
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = () => {
-    const allUsers: IUser[] = JSON.parse(localStorage.getItem('users') || '[]');
+    const allUsers: IUSER[] = JSON.parse(localStorage.getItem('users') || '[]');
     const allHotels: IHotel[] = JSON.parse(localStorage.getItem('hotels') || '[]');
     const allDepartments: IDepartment[] = JSON.parse(localStorage.getItem('departments') || '[]');
     
@@ -40,14 +47,24 @@ const Admin = () => {
     setUserModalOpen(true);
   };
 
-  const handleEditUser = (user: IUser) => {
+  const handleEditUser = (user: IUSER) => {
     setSelectedUser(user);
     setUserModalOpen(true);
   };
 
-  const handleDeleteUser = (user: IUser) => {
+  const handleDeleteUser = (user: IUSER) => {
     setSelectedUser(user);
     setDeleteDialogOpen(true);
+  };
+
+  const handleAddDepartment = () => {
+    setSelectedDepartment(null);
+    setDepartmentModalOpen(true);
+  };
+
+  const handleAddHotel = () => {
+    setSelectedHotel(null);
+    setHotelModalOpen(true);
   };
 
   const confirmDelete = () => {
@@ -55,7 +72,7 @@ const Admin = () => {
     
     setDeleteLoading(true);
     setTimeout(() => {
-      const users: IUser[] = JSON.parse(localStorage.getItem('users') || '[]');
+      const users: IUSER[] = JSON.parse(localStorage.getItem('users') || '[]');
       const filtered = users.filter(u => u.id !== selectedUser.id);
       localStorage.setItem('users', JSON.stringify(filtered));
       
@@ -79,13 +96,13 @@ const Admin = () => {
 
   const getHotelName = (hotelId?: string) => {
     if (!hotelId) return '-';
-    const hotel = hotels.find(h => h.id === hotelId);
+    const hotel = hotels.find(h => h.hotelId === hotelId);
     return hotel?.name || '-';
   };
 
   const getDepartmentName = (departmentId?: string) => {
     if (!departmentId) return '-';
-    const dept = departments.find(d => d.id === departmentId);
+    const dept = departments.find(d => d.hotelId === departmentId);
     return dept?.name || '-';
   };
 
@@ -152,8 +169,8 @@ const Admin = () => {
                             {user.role}
                           </Badge>
                         </td>
-                        <td className="py-3 px-4 text-sm">{getHotelName(user.hotelId)}</td>
-                        <td className="py-3 px-4 text-sm">{getDepartmentName(user.departmentId)}</td>
+                        <td className="py-3 px-4 text-sm">{getHotelName(user.assignedHotelId?.toString() || '')}</td>
+                        <td className="py-3 px-4 text-sm">{getDepartmentName(user.assignedDepartmentId?.toString() || '')}</td>
                         <td className="py-3 px-4 text-center">
                           <Badge variant={user.isActive ? 'default' : 'secondary'}>
                             {user.isActive ? 'Active' : 'Inactive'}
@@ -192,7 +209,7 @@ const Admin = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Hotel Management</CardTitle>
-              <Button className="gap-2">
+              <Button className="gap-2" onClick={handleAddHotel}>
                 <Plus className="w-4 h-4" />
                 Add Hotel
               </Button>
@@ -207,7 +224,7 @@ const Admin = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Department Management</CardTitle>
-              <Button className="gap-2">
+              <Button className="gap-2" onClick={handleAddDepartment}>
                 <Plus className="w-4 h-4" />
                 Add Department
               </Button>
@@ -223,6 +240,20 @@ const Admin = () => {
         open={userModalOpen}
         onOpenChange={setUserModalOpen}
         user={selectedUser}
+        onSave={loadData}
+      />
+
+      <DepartmentModal
+        open={departmentModalOpen}
+        onOpenChange={setDepartmentModalOpen}
+        department={selectedDepartment}
+        onSave={loadData}
+      />
+
+      <HotelModal
+        open={hotelModalOpen}
+        onOpenChange={setHotelModalOpen}
+        hotel={selectedHotel}
         onSave={loadData}
       />
 
