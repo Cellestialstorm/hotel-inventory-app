@@ -17,6 +17,12 @@ interface UserModalProps {
 }
 
 const DepartmentModal = ({ open, onOpenChange, department, onSave }: UserModalProps) => {
+  useEffect(() => {
+    if (open) {
+      fetchHotels();
+    }
+  }, [open])
+  
   const [formData, setFormData] = useState({
     name: '',
     hotelId: '',
@@ -28,25 +34,21 @@ const DepartmentModal = ({ open, onOpenChange, department, onSave }: UserModalPr
   const { accessToken } = useAuth();
 
   useEffect(() => {
-    if (open) {
-      fetchHotelsAndDepartments();
-
-      if (department) {
-        setFormData({
-          name: department?.name || '',
-          hotelId: department?.hotelId || '',
-        });
-      } else {
-        setFormData({
-          name: '',
-          hotelId: '',
-        });
-      }
-      setErrors({});
+    if (department) {
+      setFormData({
+        name: department?.name || '',
+        hotelId: department?.hotelId || '',
+      });
+    } else {
+      setFormData({
+        name: '',
+        hotelId: '',
+      });
     }
-  }, [open, department]);
+    setErrors({});
+  }, [department]);
 
-  const fetchHotelsAndDepartments = async () => {
+  const fetchHotels = async () => {
     try {
       if (!accessToken) {
         console.error("No access token found");
@@ -55,7 +57,7 @@ const DepartmentModal = ({ open, onOpenChange, department, onSave }: UserModalPr
 
       const [hotelRes] = await Promise.all([
         apiClient.get('/hotels', {
-          headers: { Authorization: `Bearer ${sessionStorage.getItem('accessToken')}` },
+          headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
         }),
       ]);
       setHotels(hotelRes.data.data || []);
@@ -79,7 +81,7 @@ const DepartmentModal = ({ open, onOpenChange, department, onSave }: UserModalPr
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validate()) {
       toast.error('Please fix the errors');
       return;
@@ -93,10 +95,16 @@ const DepartmentModal = ({ open, onOpenChange, department, onSave }: UserModalPr
         hotelId: formData.hotelId,
       };
 
-      apiClient.post('/departments', payload, {
-        headers: {Authorization: `Bearer ${sessionStorage.getItem('accessToken')}`}
-      });
-      toast.success('Department created successfully!');
+      if (department) {
+        await apiClient.put(`/departments/${department.departmentId}`, payload, {
+          headers: {Authorization: `Bearer ${localStorage.getItem('accessToken')}`}
+        });
+      } else {
+        await apiClient.post('/departments', payload, {
+          headers: {Authorization: `Bearer ${localStorage.getItem('accessToken')}`}
+        });
+      }
+      toast.success(department ? 'Department updated successfully!' : 'Department created successfully!');
       onSave();
       onOpenChange(false);
     } catch (error: any) {
@@ -135,7 +143,7 @@ const DepartmentModal = ({ open, onOpenChange, department, onSave }: UserModalPr
                   </SelectTrigger>
                   <SelectContent>
                     {hotels.map((hotel) => (
-                      <SelectItem key={hotel.hotelId} value={hotel.hotelId}>{hotel.name}</SelectItem>
+                      <SelectItem key={hotel._id} value={hotel._id}>{hotel.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

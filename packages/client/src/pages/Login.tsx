@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Eye, EyeOff, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
-import apiClient from '../api/axios';
+import apiClient, { storeAccessToken } from '../api/axios';
 import { UserRole, IClientUser } from '@hotel-inventory/shared';
 
 const Login = () => {
@@ -40,6 +40,7 @@ const Login = () => {
       });
 
       const { accessToken, user } = response.data.data;
+      storeAccessToken(accessToken);
 
       if (accessToken && user) {
         login(accessToken, user);
@@ -50,7 +51,6 @@ const Login = () => {
 
         switch (user.role) {
           case UserRole.ADMIN:
-            console.log('Stored token:', sessionStorage.getItem('accessToken'));
             navigate('/dashboard', { replace: true });
             break;
           case UserRole.USER:

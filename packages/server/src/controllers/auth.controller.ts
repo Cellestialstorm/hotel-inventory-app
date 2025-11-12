@@ -1,5 +1,6 @@
 // packages/server/src/controllers/auth.controller.ts
 import { Request, Response, NextFunction } from 'express';
+import { cookieOptions } from '@/config/cookieOptions';
 import { AuthService } from '../services/auth.service';
 import ApiResponse from '../utils/ApiResponse';
 import ApiError from '../utils/ApiError';
@@ -9,17 +10,6 @@ import User from '../models/User.model';
 // Helper function for handling async controller logic
 const asyncHandler = (fn: Function) => (req: Request, res: Response, next: NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch(next);
-};
-
-// --- Cookie Configuration ---
-const refreshTokenExpiryDays = parseInt(process.env.REFRESH_TOKEN_EXPIRY || '7d', 10);
-const refreshTokenMaxAge = refreshTokenExpiryDays * 24 * 60 * 60 * 1000; // Convert days to milliseconds
-
-const cookieOptions = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
-    sameSite: 'strict' as const, // Or 'lax'. 'none' requires secure: true
-    maxAge: refreshTokenMaxAge
 };
 
 /**
@@ -69,9 +59,9 @@ const refreshToken = asyncHandler(async (req: Request, res: Response, _next: Nex
         throw new ApiError(401, 'Refresh token not found', 'REFRESH_TOKEN_MISSING');
     }
 
-    const { accessToken } = await AuthService.refreshToken(providedToken);
+    const { accessToken, user } = await AuthService.refreshToken(providedToken);
 
-    res.status(200).json(new ApiResponse(200, { accessToken }, 'Access token refreshed'));
+    res.status(200).json(new ApiResponse(200, { accessToken, user }, 'Access token refreshed'));
 });
 
 /**

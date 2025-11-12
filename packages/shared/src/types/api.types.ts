@@ -1,4 +1,3 @@
-import { IItem } from "./inventory.types";
 import { IClientUser, IUSER } from "./user.types";
 
 export interface IApiRespose<T = any> {
@@ -35,7 +34,4 @@ export interface IGetByIdParams {
     id: string;
 }
 
-export type ICreateItemRequest = Omit<IItem, 'itemID' | 'createdAt' | 'updatedAt'>;
-export type IUpdateItemRequest = Partial<Omit<IItem, 'itemID' | 'createdAt' | 'updatedAt'>>;
-export type IGetItemsResponse = { items: IItem[]; };
 

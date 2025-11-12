@@ -17,11 +17,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Home, Package, BarChart3, Settings, LogOut, User, Menu, X } from 'lucide-react';
-import { IUser, IHotel, IDepartment } from '@/types';
+import { IHotel } from '@hotel-inventory/shared';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@hotel-inventory/shared';
+import apiClient from '@/api/axios';
+import { toast } from 'sonner';
 
 interface LayoutProps {
   children: ReactNode;
@@ -30,53 +31,35 @@ interface LayoutProps {
 const Layout = ({ children }: LayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [currentUser, setCurrentUser] = useState<IUser | null>(null);
   const [hotels, setHotels] = useState<IHotel[]>([]);
-  const [departments, setDepartments] = useState<IDepartment[]>([]);
-  const [selectedHotel, setSelectedHotel] = useState<string>('');
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user, logout, selectedHotelId, setSelectedHotelId, accessToken } = useAuth()
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
-    setCurrentUser(user);
+    if (user?.role !== UserRole.ADMIN) return;
 
-    const allHotels: IHotel[] = JSON.parse(localStorage.getItem('hotels') || '[]');
-    const allDepartments: IDepartment[] = JSON.parse(localStorage.getItem('departments') || '[]');
-
-    setHotels(allHotels);
-    setDepartments(allDepartments);
-
-    // Set initial selections
-    if (user.hotelId) {
-      setSelectedHotel(user.hotelId);
-    } else if (allHotels.length > 0) {
-      const saved = localStorage.getItem('selectedHotel');
-      setSelectedHotel(saved || allHotels[0].id);
-    }
-
-    if (user.departmentId) {
-      setSelectedDepartment(user.departmentId);
-    }
-  }, []);
+    const fetchHotels = async () => {
+      try {
+        const res = await apiClient.get('/hotels', {
+          headers: { Authorization: `Bearer ${accessToken}`},
+        });
+        setHotels(res.data.data || []);
+      } catch (error: any) {
+        toast.error('Failed to load hotels');
+      }
+    };
+    fetchHotels();
+  }, [user, accessToken]);
 
   useEffect(() => {
-    if (selectedHotel) {
-      localStorage.setItem('selectedHotel', selectedHotel);
+    if (selectedHotelId) {
+      localStorage.setItem('selectedHotelId', selectedHotelId);
+    } else {
+      localStorage.removeItem('selectedHotelId');
     }
-    if (selectedDepartment) {
-      localStorage.setItem('selectedDepartment', selectedDepartment);
-    }
-  }, [selectedHotel, selectedDepartment]);
+  }, [selectedHotelId]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('authToken');
-    toast.success('Logged out successfully');
-    navigate('/login');
-  };
-
-  const { user } = useAuth();
+  const handleLogout = () => logout();
 
   const navigation = [
     { name: 'Dashboard', path: '/dashboard', icon: Home },
@@ -84,8 +67,6 @@ const Layout = ({ children }: LayoutProps) => {
     { name: 'Reports', path: '/reports', icon: BarChart3 },
     ...(user?.role === UserRole.ADMIN ? [{ name: 'Admin', path: '/admin', icon: Settings }] : []),
   ];
-
-  const filteredDepartments = departments.filter(d => d.hotelId === selectedHotel);
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
@@ -118,29 +99,16 @@ const Layout = ({ children }: LayoutProps) => {
           </div>
 
           <div className="flex-1 flex items-center gap-2 justify-end">
-            {currentUser?.role === 'ADMIN' && (
+            {user?.role === UserRole.ADMIN && (
               <>
-                <Select value={selectedHotel} onValueChange={setSelectedHotel}>
+                <Select value={selectedHotelId ?? undefined} onValueChange={(v) => setSelectedHotelId(v)}>
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Select Hotel" />
                   </SelectTrigger>
                   <SelectContent>
                     {hotels.map(hotel => (
-                      <SelectItem key={hotel.id} value={hotel.id}>
+                      <SelectItem key={hotel._id} value={hotel._id}>
                         {hotel.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select Department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredDepartments.map(dept => (
-                      <SelectItem key={dept.id} value={dept.id}>
-                        {dept.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -152,20 +120,18 @@ const Layout = ({ children }: LayoutProps) => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="gap-2">
                   <User className="w-4 h-4" />
-                  <span className="hidden sm:inline">{currentUser?.username}</span>
+                  <span className="hidden sm:inline">{user?.username}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium">{currentUser?.username}</p>
-                    <Badge variant={getRoleBadgeVariant(currentUser?.role || '')} className="w-fit">
-                      {currentUser?.role}
+                    <p className="text-sm font-medium">{user?.username}</p>
+                    <Badge variant={getRoleBadgeVariant(user?.role || '')} className="w-fit">
+                      {user?.role}
                     </Badge>
                   </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Change Password</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-danger">
                   <LogOut className="w-4 h-4 mr-2" />

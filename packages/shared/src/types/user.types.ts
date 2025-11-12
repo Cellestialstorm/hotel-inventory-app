@@ -1,7 +1,7 @@
 import { UserRole } from "../enums";
 import mongoose, { Document } from "mongoose";
 
-export interface IUSER extends Document {
+export interface IUserAttributes {
     userId: string;
     username: string;
     role: UserRole;
@@ -11,10 +11,16 @@ export interface IUSER extends Document {
     createdAt: Date;
     updatedAt: Date;
     isActive?: boolean;
-    comparePassword(password: string): Promise<boolean>;
 }
 
-export type IUserRole = UserRole;
+export interface IUSER extends IUserAttributes, Document {
+  comparePassword(password: string): Promise<boolean>;
+}
+
+
+export interface IUpdateUserRequest extends Partial<Omit<IUSER, 'userId' | 'createdAt' | 'updatedAt'>>{
+    password?: string;
+}
 
 export interface IUserPermissions {
     // Example structure, adjust based on your needs
@@ -24,4 +30,4 @@ export interface IUserPermissions {
     // canManageInventory?: boolean;
 }
 
-export type IClientUser = Omit<IUSER, 'password'>;
+export type IClientUser = Omit<IUserAttributes, 'password'>;

@@ -1,4 +1,5 @@
 export interface IDepartment{
+    _id: string;
     departmentId: string;
     name: string;
     hotelId: string;

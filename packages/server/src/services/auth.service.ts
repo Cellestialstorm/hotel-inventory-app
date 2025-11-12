@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import User from '@/models/User.model';
-import { IUSER } from '@hotel-inventory/shared';
+import { IClientUser, IUSER } from '@hotel-inventory/shared';
 import ApiError from '@/utils/ApiError';
 import { generateAccessToken, generateRefreshToken, verifyToken, ITokenPayload } from '@/utils/jwt.util';
 import { ILoginRequest, IRegisterRequest } from '@hotel-inventory/shared';
@@ -129,15 +129,15 @@ const validateToken = (token: string): ITokenPayload => {
  * @returns A new access token.
  */
 
-const refreshToken = async (refreshToken: string): Promise<{ accessToken: string}> => {
+const refreshToken = async (refreshToken: string): Promise<{ accessToken: string, user: IClientUser }> => {
     if (!refreshToken) {
         throw new ApiError(400, 'Refresh token is required', 'REFRESH_TOKEN_MISSING');
     }
 
     try {
-        const { userID: userId } = verifyToken<{ userID: string }>(refreshToken, REFRESH_TOKEN_SECRET);  // Expect userID from token (shared type naming)
+        const { userId: userId } = verifyToken<{ userId: string }>(refreshToken, REFRESH_TOKEN_SECRET);  // Expect userID from token (shared type naming)
 
-        const user = await User.findOne({ userId: userId, isActive: true });  // Use userId for server-side lookup
+        const user = await User.findOne({ userId: userId, isActive: true }).select('-password -_id --__v').lean();  // Use userId for server-side lookup
 
         if (!user) {
             logger.warn(`Refresh token attempted for non-existent user: ${userId}`)
@@ -145,14 +145,26 @@ const refreshToken = async (refreshToken: string): Promise<{ accessToken: string
         }
 
         const newPayload: ITokenPayload = {
-            userId: user.userId,  // Use userId from user object
+            userId: user.userId,
             username: user.username,
             role: user.role,
         };
 
         const newAccessToken = generateAccessToken(newPayload);
         logger.info(`New access token generated for user: ${userId}`)
-        return { accessToken: newAccessToken };
+
+        const clientUser: IClientUser = {
+            userId: user.userId,
+            username: user.username,
+            role: user.role,
+            assignedHotelId: user.assignedHotelId,
+            assignedDepartmentId: user.assignedDepartmentId,
+            isActive: user.isActive,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+        };
+
+        return { accessToken: newAccessToken, user: clientUser };
     } catch (error) {
         logger.error(`Error refreshing token: ${error instanceof Error ? error.message : 'Unknown error'}`)
         if (error instanceof ApiError) {

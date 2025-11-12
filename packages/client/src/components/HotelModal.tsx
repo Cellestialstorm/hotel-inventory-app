@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,20 +7,35 @@ import { IHotel } from '@hotel-inventory/shared';
 import { toast } from 'sonner';
 import apiClient from '@/api/axios';
 
-interface UserModalProps {
+interface HotelModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   hotel?: IHotel | null;
   onSave: () => void;
 }
 
-const HotelModal = ({ open, onOpenChange, hotel, onSave }: UserModalProps) => {
+const HotelModal = ({ open, onOpenChange, hotel, onSave }: HotelModalProps) => {
   const [formData, setFormData] = useState({
     name: '',
     location: '',
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (hotel) {
+      setFormData({
+        name: hotel.name || '',
+        location: hotel.location || '',
+      });
+    } else {
+      setFormData({
+        name: '',
+        location: '',
+      });
+    }
+    setErrors({});
+  }, [open, hotel]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -37,7 +52,7 @@ const HotelModal = ({ open, onOpenChange, hotel, onSave }: UserModalProps) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validate()) {
       toast.error('Please fix the errors');
       return;
@@ -51,10 +66,16 @@ const HotelModal = ({ open, onOpenChange, hotel, onSave }: UserModalProps) => {
         location: formData.location,
       };
 
-      apiClient.post('/hotels', payload, {
-        headers: {Authorization: `Bearer ${sessionStorage.getItem('accessToken')}`}
-      });
-      toast.success('Hotel created successfully!');
+      if (hotel) {
+        await apiClient.put(`/hotels/${hotel._id}`, payload, {
+          headers: {Authorization: `Bearer ${localStorage.getItem('accessToken')}`}
+        });
+      } else {
+        await apiClient.post('/hotels', payload, {
+          headers: {Authorization: `Bearer ${localStorage.getItem('accessToken')}`}
+        });
+      }
+      toast.success(hotel ? 'Hotel updated successfully!' : 'Hotel created successfully!');
       onSave();
       onOpenChange(false);
     } catch (error: any) {

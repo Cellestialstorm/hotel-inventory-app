@@ -11,6 +11,8 @@ import { UserRole } from '@hotel-inventory/shared';
 import apiClient from '@/api/axios';
 import { useAuth } from '@/context/AuthContext';
 
+
+
 interface UserModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -19,6 +21,12 @@ interface UserModalProps {
 }
 
 const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
+  useEffect(() => {
+    if (open) {
+      fetchHotelsAndDepartments();
+    }
+  }, [open]);
+
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -37,49 +45,61 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
   const { accessToken } = useAuth();
 
   useEffect(() => {
-    if (open) {
-      fetchHotelsAndDepartments();
-
-      if (user) {
-        setFormData({
-          username: user.username || '',
-          password: '',
-          confirmPassword: '',
-          role: user.role || UserRole.USER,
-          assignedHotelId: user.assignedHotelId ? user.assignedHotelId.toString() : '',
-          assignedDepartmentId: user.assignedDepartmentId ? user.assignedDepartmentId.toString() : '',
-        });
-      } else {
-        setFormData({
-          username: '',
-          password: '',
-          confirmPassword: '',
-          role: UserRole.USER,
-          assignedHotelId: '',
-          assignedDepartmentId: '',
-        });
-      }
-      setErrors({});
+    if (user) {
+      setFormData({
+        username: user.username || '',
+        password: '',
+        confirmPassword: '',
+        role: user.role || UserRole.USER,
+        assignedHotelId: user.assignedHotelId ? user.assignedHotelId.toString() : '',
+        assignedDepartmentId: user.assignedDepartmentId ? user.assignedDepartmentId.toString() : '',
+      });
+    } else {
+      setFormData({
+        username: '',
+        password: '',
+        confirmPassword: '',
+        role: UserRole.USER,
+        assignedHotelId: '',
+        assignedDepartmentId: '',
+      });
     }
-  }, [open, user]);
+    setErrors({});
+  }, [ user ]);
+
+  useEffect(() => {
+    if (formData.assignedHotelId && departments.length > 0) {
+      const selectedHotel = hotels.find((h) => h.hotelId === formData.assignedHotelId || h._id === formData.assignedHotelId);
+      const filtered = departments.filter((dept) => dept.hotelId === selectedHotel?._id || dept.hotelId === formData.assignedHotelId);
+
+      setFilteredDepartments(filtered);
+    } else {
+      setFilteredDepartments([]);
+    }
+  }, [formData.assignedHotelId, departments, hotels]);
 
   const fetchHotelsAndDepartments = async () => {
     try {
       if (!accessToken) {
         console.error("No access token found");
-        return
+        return { hotels: [], departments: [] };
       }
 
       const [hotelRes, deptRes] = await Promise.all([
         apiClient.get('/hotels', {
-          headers: { Authorization: `Bearer ${sessionStorage.getItem('accessToken')}` },
+          headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
         }),
         apiClient.get('/departments', {
-          headers: { Authorization: `Bearer ${sessionStorage.getItem('accessToken')}` },
+          headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
         }),
       ]);
-      setHotels(hotelRes.data.data || []);
-      setDepartments(deptRes.data.data || []);
+
+      const hotels = hotelRes.data.data || [];
+      const departments = deptRes.data.data || [];
+      setHotels(hotels);
+      setDepartments(departments);
+
+      return { hotels, departments };
     } catch (err) {
       toast.error('Failed to load hotels or departments');
     }
@@ -91,7 +111,7 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
     if (!formData.username.trim()) {
       newErrors.username = 'Username is required';
     }
-    
+
     if (!user && !formData.password) {
       newErrors.password = 'Password is required';
     }
@@ -124,14 +144,18 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
       assignedDepartmentId: '',
     });
 
+    const selectedHotel = hotels.find(
+      (h) => h.hotelId === hotelId || h._id === hotelId
+    )
+
     const filtered = departments.filter(
-      (dept) => dept.hotelId === hotelId || dept.hotelId === hotelId
+      (dept) => dept.hotelId === selectedHotel?._id || dept.hotelId === hotelId
     );
 
     setFilteredDepartments(filtered);
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validate()) {
       toast.error('Please fix the errors');
       return;
@@ -150,13 +174,24 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
           formData.role === UserRole.USER ? formData.assignedDepartmentId : undefined,
       };
 
-      apiClient.post('/auth/register', payload);
-      toast.success('User registered successfully!');
+      const headers = {
+        Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+      };
+
+      if (user) {
+        await apiClient.put(`/users/${user.userId}`, payload, { headers });
+        toast.success('User updated successfully');
+      } else {
+        await apiClient.post('/auth/register', payload, { headers });
+        toast.success('User registered successfully!');
+      }
+
+
       onSave();
       onOpenChange(false);
     } catch (error: any) {
       console.error(error);
-      const message = error.respense?.data?.message || 'Failed to register user. Try again.';
+      const message = error.response?.data?.message || 'Failed to register user. Try again.';
       toast.error(message);
     } finally {
       setLoading(false);
@@ -240,7 +275,7 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
                   </SelectTrigger>
                   <SelectContent>
                     {filteredDepartments.map(dept => (
-                      <SelectItem key={dept.departmentId} value={dept.departmentId}>{dept.name}</SelectItem>
+                      <SelectItem key={dept._id} value={dept._id}>{dept.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

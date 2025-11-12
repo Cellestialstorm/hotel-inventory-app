@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose";
 import type { IDepartment as ISharedDepartment } from "@hotel-inventory/shared";
 
-export interface IDepartmentDocument extends Document, Omit<ISharedDepartment, 'departmentId' | 'hotelId'> {
+export interface IDepartmentDocument extends Document, Omit<ISharedDepartment, 'departmentId' | 'hotelId' | '_id'> {
     department: mongoose.Types.ObjectId;
     departmentId: string;
     hotelId: mongoose.Types.ObjectId;

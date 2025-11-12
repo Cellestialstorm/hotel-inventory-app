@@ -1,22 +1,21 @@
 import express from 'express';
 import { HotelController } from '@/controllers/hotel.controller';
 import { authenticateToken } from '@/middleware/auth.middleware';
-import { checkAdminOnly } from '@/middleware/roleCheck.middleware';
-// TODO: Import Validation Middleware
+import { checkRole,checkAdminOnly } from '@/middleware/roleCheck.middleware';
+import { UserRole } from '@hotel-inventory/shared';
 
 const router = express.Router();
 
 router.use(authenticateToken);
-router.use(checkAdminOnly);
 
-router.post('/', HotelController.createHotel);
+router.post('/', checkAdminOnly, HotelController.createHotel);
 
-router.get('/', HotelController.getAllHotels);
+router.get('/', checkRole([UserRole.ADMIN, UserRole.USER]), HotelController.getAllHotels);
 
-router.get('/:id', HotelController.getHotelById);
+router.get('/:id', checkRole([UserRole.ADMIN, UserRole.USER]), HotelController.getHotelById);
 
-router.put('/:id', HotelController.updateHotel);
+router.put('/:id', checkAdminOnly, HotelController.updateHotel);
 
-router.delete('/:id', HotelController.deleteHotel);
+router.delete('/:id', checkAdminOnly, HotelController.deleteHotel);
 
 export default router;

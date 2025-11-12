@@ -1,17 +1,20 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.middleware';
-import { checkRole, checkAdminOnly } from '../middleware/roleCheck.middleware';
-import { UserRole } from '@hotel-inventory/shared';
+import { checkAdminOnly } from '../middleware/roleCheck.middleware';
+import { UserController } from '@/controllers/user.controller';
 
 const router = express.Router();
 
-// Routes accessed by admin only
-router.post('/users', authenticateToken, checkAdminOnly);
+router.use(authenticateToken);
+router.use(checkAdminOnly);
 
-// Routes accessed by admin and anagers
-router.get('/users', authenticateToken, checkRole([UserRole.ADMIN, UserRole.USER]));
+router.get('/', UserController.getAllUsers);
 
 // Routes accessed by logged in users
-router.get('/users/me', authenticateToken);
+router.get('/:id', UserController.getUserById);
+
+router.put('/:id', UserController.updateUser)
+
+router.delete('/:id', UserController.deleteUser)
 
 export default router;

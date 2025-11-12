@@ -11,6 +11,8 @@ import DepartmentModal from '@/components/DepartmentModal';
 import HotelModal from '@/components/HotelModal';
 import DeleteConfirmDialog from '@/components/DeleteConfirmDialog';
 import { toast } from 'sonner';
+import { useAuth } from '@/context/AuthContext';
+import apiClient from '@/api/axios';
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState('users');
@@ -21,25 +23,52 @@ const Admin = () => {
   const [departments, setDepartments] = useState<IDepartment[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState<IDepartment | null>(null);
   const [departmentModalOpen, setDepartmentModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState({
+    users: '',
+    hotels: '',
+    departments: '',
+  });
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<IUSER | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteType, setDeleteType] = useState<'user' | 'department' | 'hotel' | null>(null);
 
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const loadData = () => {
-    const allUsers: IUSER[] = JSON.parse(localStorage.getItem('users') || '[]');
-    const allHotels: IHotel[] = JSON.parse(localStorage.getItem('hotels') || '[]');
-    const allDepartments: IDepartment[] = JSON.parse(localStorage.getItem('departments') || '[]');
-    
-    setUsers(allUsers);
-    setHotels(allHotels);
-    setDepartments(allDepartments);
+  const { accessToken } = useAuth();
+
+  const loadData = async () => {
+    try {
+      if (!accessToken) {
+        console.error('No Token found');
+        toast.error('You are not authenticated');
+        return;
+      }
+
+      const [userRes, hotelRes, deptRes] = await Promise.all([
+        apiClient.get('/users', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }),
+        apiClient.get('/hotels', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }),
+        apiClient.get('/departments', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }),
+      ]);
+
+      setUsers(userRes.data.data || []);
+      setHotels(hotelRes.data.data || []);
+      setDepartments(deptRes.data.data || []);
+    } catch (error: any) {
+      console.error(error);
+      const msg = error.response?.data?.message || 'Failed to load data';
+      toast.error(msg);
+    }
   };
 
   const handleAddUser = () => {
@@ -54,6 +83,9 @@ const Admin = () => {
 
   const handleDeleteUser = (user: IUSER) => {
     setSelectedUser(user);
+    setSelectedHotel(null);
+    setSelectedDepartment(null);
+    setDeleteType('user');
     setDeleteDialogOpen(true);
   };
 
@@ -62,52 +94,109 @@ const Admin = () => {
     setDepartmentModalOpen(true);
   };
 
+  const handleEditDepartment = (department: IDepartment) => {
+    setSelectedDepartment(department);
+    setDepartmentModalOpen(true);
+  };
+
+  const handleDeleteDepartment = (department: IDepartment) => {
+    console.log("Deleting department:", department);
+    setSelectedDepartment(department);
+    setSelectedHotel(null);
+    setSelectedUser(null);
+    setDeleteType('department');
+    setDeleteDialogOpen(true);
+  };
+
   const handleAddHotel = () => {
     setSelectedHotel(null);
     setHotelModalOpen(true);
   };
 
-  const confirmDelete = () => {
-    if (!selectedUser) return;
-    
-    setDeleteLoading(true);
-    setTimeout(() => {
-      const users: IUSER[] = JSON.parse(localStorage.getItem('users') || '[]');
-      const filtered = users.filter(u => u.id !== selectedUser.id);
-      localStorage.setItem('users', JSON.stringify(filtered));
-      
-      toast.success('User deleted successfully');
-      setDeleteLoading(false);
-      setDeleteDialogOpen(false);
-      loadData();
-    }, 500);
+  const handleDeleteHotel = (hotel: IHotel) => {
+    console.log("Deleting hotel:", hotel);
+    setSelectedHotel(hotel);
+    setSelectedUser(null);
+    setSelectedDepartment(null);
+    setDeleteType('hotel');
+    setDeleteDialogOpen(true);
   };
 
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
-      case 'ADMIN':
-        return 'destructive';
-      case 'MANAGER':
-        return 'default';
-      default:
-        return 'secondary';
-    }
+  const handleEditHotel = (hotel: IHotel) => {
+    setSelectedHotel(hotel);
+    setHotelModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    
+    setDeleteLoading(true);
+
+    try {
+      if (!accessToken) {
+        toast.error('Authentication token not found.');
+        setDeleteLoading(false);
+        return;
+      }
+
+      if (deleteType === 'user' && selectedUser) {
+        await apiClient.delete(`/users/${selectedUser.userId}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        toast.success(`User "${selectedUser.username}" deleted successfully!`);
+      }
+
+      if (deleteType === 'department' && selectedDepartment) {
+        await apiClient.delete(`/departments/${selectedDepartment.departmentId}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        toast.success(`Department "${selectedDepartment.name}" deleted successfully!`);
+      }
+
+      if (deleteType === 'hotel' && selectedHotel) {
+        await apiClient.delete(`/hotels/${selectedHotel._id}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        toast.success(`Hotel "${selectedHotel.name}" deleted successfully!`);
+      }
+
+      loadData();
+    } catch (error: any) {
+      console.error('Failed to delete:', error);
+      const msg = error.response?.data?.message || 'Failed to delete item';
+      toast.error(msg);
+     } finally {
+      setDeleteLoading(false);
+      setDeleteDialogOpen(false);
+      setDeleteType(null);
+      setSelectedUser(null);
+      setSelectedDepartment(null);
+      setSelectedHotel(null);
+     }
   };
 
   const getHotelName = (hotelId?: string) => {
     if (!hotelId) return '-';
-    const hotel = hotels.find(h => h.hotelId === hotelId);
+    const hotel = hotels.find(h => h._id === hotelId || h.hotelId === hotelId);
     return hotel?.name || '-';
   };
 
   const getDepartmentName = (departmentId?: string) => {
     if (!departmentId) return '-';
-    const dept = departments.find(d => d.hotelId === departmentId);
+    const dept = departments.find(d => d._id === departmentId || d.departmentId === departmentId);
     return dept?.name || '-';
   };
 
   const filteredUsers = users.filter(user =>
-    user.username.toLowerCase().includes(searchTerm.toLowerCase())
+    user.username.toLowerCase().includes(searchTerm.users.toLowerCase())
+  );
+
+  const filteredDepartments = departments.filter(dept =>
+    dept.name.toLowerCase().includes(searchTerm.departments.toLowerCase()) ||
+    getHotelName(dept.hotelId).toLowerCase().includes(searchTerm.departments.toLowerCase())
+  );
+
+  const filteredHotels = hotels.filter(hotel =>
+    hotel.name.toLowerCase().includes(searchTerm.hotels.toLowerCase())
   );
 
   return (
@@ -141,8 +230,8 @@ const Admin = () => {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     placeholder="Search users..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    value={searchTerm.users}
+                    onChange={(e) => setSearchTerm({ ...searchTerm, users: e.target.value })}
                     className="pl-10"
                   />
                 </div>
@@ -162,10 +251,10 @@ const Admin = () => {
                   </thead>
                   <tbody>
                     {filteredUsers.map((user) => (
-                      <tr key={user.id} className="border-b hover:bg-muted/50 transition-colors">
+                      <tr key={user._id} className="border-b hover:bg-muted/50 transition-colors">
                         <td className="py-3 px-4 text-sm font-medium">{user.username}</td>
                         <td className="py-3 px-4">
-                          <Badge variant={getRoleBadgeVariant(user.role)}>
+                          <Badge variant='default'>
                             {user.role}
                           </Badge>
                         </td>
@@ -215,7 +304,66 @@ const Admin = () => {
               </Button>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">Hotel management content will be displayed here</p>
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search hotels..."
+                    value={searchTerm.hotels}
+                    onChange={(e) => setSearchTerm({ ...searchTerm, hotels: e.target.value })}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 px-4 text-sm font-medium">Hotel Name</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium">Location</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium">Total Departments</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredHotels.map((hotel) => {
+
+                      const deptCount = departments.filter(
+                        (dept) => dept.hotelId === hotel._id || dept.hotelId === hotel.hotelId
+                      ).length;
+
+                      return (
+                      <tr key={hotel._id} className="border-b hover:bg-muted/50 transition-colors">
+                        <td className="py-3 px-4 text-sm font-medium">{hotel.name}</td>
+                        <td className="py-3 px-4 text-sm">{hotel.location}</td>
+                        <td className="py-3 px-4 text-sm">{deptCount}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center justify-center gap-2">
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-8 w-8"
+                              onClick={() => handleEditHotel(hotel)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-8 w-8 text-danger hover:text-danger"
+                              onClick={() => handleDeleteHotel(hotel)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -230,7 +378,60 @@ const Admin = () => {
               </Button>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">Department management content will be displayed here</p>
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search departments..."
+                    value={searchTerm.departments}
+                    onChange={(e) => setSearchTerm({ ...searchTerm, departments: e.target.value })}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 px-4 text-sm font-medium">Department Name</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium">Hotel Name</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredDepartments.map((department) => {
+                      const hotelName = getHotelName(department.hotelId)
+                      return (
+                      <tr key={department._id} className="border-b hover:bg-muted/50 transition-colors">
+                        <td className="py-3 px-4 text-sm font-medium">{department.name}</td>
+                        <td className="py-3 px-4 text-sm">{hotelName}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center justify-center gap-2">
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-8 w-8"
+                              onClick={() => handleEditDepartment(department)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-8 w-8 text-danger hover:text-danger"
+                              onClick={() => handleDeleteDepartment(department)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -260,7 +461,7 @@ const Admin = () => {
       <DeleteConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
-        itemName={selectedUser?.username || ''}
+        itemName={selectedUser?.username || selectedDepartment?.name || selectedHotel?.name || ''}
         onConfirm={confirmDelete}
         loading={deleteLoading}
       />

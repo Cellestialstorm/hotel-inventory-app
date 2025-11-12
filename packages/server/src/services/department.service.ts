@@ -19,7 +19,7 @@ const createDepartment = async (deptData: ICreateDepartmentRequest): Promise<IDe
     if (!name || !hotelId) {
         throw new ApiError(400, 'Department name and Hotel ID are required', 'VALIDATION_ERROR');
     }
-    const hotelExists = await Hotel.findOne({ hotelId: hotelId });
+    const hotelExists = await Hotel.findOne({ _id: hotelId });
     if (!hotelExists) {
         throw new ApiError(404, `Hotel with ID ${hotelId} not found`, 'HOTEL_NOT_FOUND');
     }
