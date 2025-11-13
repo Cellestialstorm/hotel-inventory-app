@@ -11,6 +11,12 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@/*": ["./packages/server/src/*"],
+
+      "@hotel-inventory/shared": ["./packages/shared/src/index.ts"],
+      "@hotel-inventory/shared/*": ["./packages/shared/src/*"]
+    }
   }
 }
