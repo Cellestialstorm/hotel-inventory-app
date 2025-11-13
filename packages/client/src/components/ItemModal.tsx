@@ -42,7 +42,7 @@ const ItemModal = ({ open, onOpenChange, item, onSave }: any) => {
     if (item) {
       setForm({ name: item.name || '', departmentId: item.departmentId?._id || item.departmentId, quantityAdded: 0, minStock: item.minStock || 0 });
     } else {
-      setForm({ name: '', departmentId: user?.assignedDepartmentId.toString() || '', quantityAdded: 0, minStock: 0 });
+      setForm({ name: '', departmentId: user?.assignedDepartmentId ? user.assignedDepartmentId.toString() : '', quantityAdded: 0, minStock: 0 });
     }
   }, [open, item, user?.assignedDepartmentId]);
 
