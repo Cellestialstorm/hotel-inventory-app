@@ -2,10 +2,11 @@
   "name": "@hotel-inventory/server",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "nodemon",
     "build": "tsc",
-    "start": "node -r tsconfig-paths/register -r ./tsconfig-paths-bootstrap.js dist/server.js",
+    "start": "node --experimental-specifier-resolution=node -r tsconfig-paths/register -r ./tsconfig-paths-bootstrap.js dist/server.js",
     "lint": "eslint src --ext ts --report-unused-disable-directives --max-warnings 0",
     "type-check": "tsc --noEmit",
     "seed": "ts-node scripts/seed.ts",
