@@ -6,20 +6,17 @@
     "rootDir": "src",
     "baseUrl": ".",
     "paths": {
-      /* Server-specific alias */
       "@/*": ["./src/*"]
     },
     "typeRoots": ["./src/types", "./node_modules/@types"],
     "types": ["node", "express"]
   },
   "references": [
-    /* This tells TS to build 'shared' first */
     { "path": "../shared" }
   ],
   "include": [
-    /* This is the key: */
-    "src/**/*.ts",      /* Include all typescript files */
-    "src/types/**/*.d.ts" /* Explicitly include type definitions */
+    "src/**/*.ts",
+    "src/types/**/*.d.ts"
   ],
   "exclude": ["dist", "node_modules"]
 }
