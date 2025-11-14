@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import User from '@/models/User.model';
+import User from '../models/User.model';
 import { IClientUser, IUSER } from '@hotel-inventory/shared';
 import ApiError from '@/utils/ApiError';
 import { generateAccessToken, generateRefreshToken, verifyToken, ITokenPayload } from '@/utils/jwt.util';
