@@ -1,34 +1,41 @@
 {
+  /* Add extends */
+  "extends": "../../tsconfig.base.json",
+
   "compilerOptions": {
     "target": "ES2020",
     "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
+    
+    /* These module settings are best for Vite */
     "moduleResolution": "node",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+
+    /* These are inherited but good to be explicit */
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
+    
+    /* Use 'baseUrl' and 'paths' from base config */
+    /* Remove redundant 'baseUrl' and 'paths' for shared */
     "baseUrl": ".",
     "paths": {
-      "@hotel-inventory/shared": ["../shared/dist"],
-      "@/*": ["./src/*"],
-      "@/components/*": ["./src/components/*"],
-      "@/hooks/*": ["./src/hooks/*"],
-      "@/services/*": ["./src/services/*"],
-      "@/store/*": ["./src/store/*"],
-      "@/types/*": ["./src/types/*"],
-      "@/utils/*": ["./src/utils/*"]
+      /* Client-specific alias */
+      "@/*": ["./src/*"]
+      /* The @hotel-inventory/shared path is now inherited */
     }
   },
   "include": ["src"],
-  "exclude": ["node_modules", "dist", "build"]
+  "exclude": ["node_modules", "dist", "build"],
+
+  /* This is critical for build order */
+  "references": [
+    { "path": "../shared" }
+  ]
 }

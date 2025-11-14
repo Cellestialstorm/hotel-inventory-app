@@ -1,28 +1,25 @@
 {
   "extends": "../../tsconfig.base.json",
-
   "compilerOptions": {
     "module": "commonjs",
     "outDir": "dist",
     "rootDir": "src",
-
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-
-      "@hotel-inventory/shared": ["../shared/src/index.ts"],
-      "@hotel-inventory/shared/*": ["../shared/src/*"]
-    }
+      /* Server-specific alias */
+      "@/*": ["./src/*"]
+    },
+    "typeRoots": ["./src/types", "./node_modules/@types"],
+    "types": ["node", "express"]
   },
-
   "references": [
+    /* This tells TS to build 'shared' first */
     { "path": "../shared" }
   ],
-
-  "include": ["src/**/*"],
+  "include": [
+    /* This is the key: */
+    "src/**/*.ts",      /* Include all typescript files */
+    "src/types/**/*.d.ts" /* Explicitly include type definitions */
+  ],
   "exclude": ["dist", "node_modules"]
 }

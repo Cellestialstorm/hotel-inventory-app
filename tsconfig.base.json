@@ -12,10 +12,16 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "composite": true,
-    "paths": {
-      "@/*": ["./packages/server/src/*"],
 
+    /* Base Monorepo Settings */
+    "composite": true,
+    "declaration": true,
+    "sourceMap": true,
+
+    /* Base Path Alias (for IDE only) */
+    "baseUrl": ".",
+    "paths": {
+      /* This helps VSCode find the source */
       "@hotel-inventory/shared": ["./packages/shared/src/index.ts"],
       "@hotel-inventory/shared/*": ["./packages/shared/src/*"]
     }
