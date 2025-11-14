@@ -1,10 +1,10 @@
 import mongoose from 'mongoose';
 import User from '../models/User.model';
 import { IClientUser, IUSER } from '@hotel-inventory/shared';
-import ApiError from '@/utils/ApiError';
-import { generateAccessToken, generateRefreshToken, verifyToken, ITokenPayload } from '@/utils/jwt.util';
+import ApiError from '../utils/ApiError';
+import { generateAccessToken, generateRefreshToken, verifyToken, ITokenPayload } from '../utils/jwt.util';
 import { ILoginRequest, IRegisterRequest } from '@hotel-inventory/shared';
-import logger from '@/utils/logger';
+import logger from '../utils/logger';
 import { UserRole } from '@hotel-inventory/shared';
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || 'your_access_token_secret';
