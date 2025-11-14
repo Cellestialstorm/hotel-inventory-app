@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "nodemon",
     "build": "tsc",
-    "start": "node -r tsconfig-paths/register -r ./tsconfig-paths-bootstrap.js dist/server.js",
+    "start": "node -r tsconfig-paths/register -r ./packages/server/tsconfig-paths-bootstrap.js ./packages/server/dist/server.js",
     "lint": "eslint src --ext ts --report-unused-disable-directives --max-warnings 0",
     "type-check": "tsc --noEmit",
     "seed": "ts-node scripts/seed.ts",
