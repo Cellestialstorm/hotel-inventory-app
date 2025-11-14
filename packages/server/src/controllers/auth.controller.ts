@@ -1,6 +1,6 @@
 // packages/server/src/controllers/auth.controller.ts
 import { Request, Response, NextFunction } from 'express';
-import { cookieOptions } from '@/config/cookieOptions';
+import { cookieOptions } from '../config/cookieOptions';
 import { AuthService } from '../services/auth.service';
 import ApiResponse from '../utils/ApiResponse';
 import ApiError from '../utils/ApiError';
