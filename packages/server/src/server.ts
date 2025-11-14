@@ -1,4 +1,3 @@
-import 'tsconfig-paths/register';
 import dotenv from 'dotenv';
 import path from 'path';
 
