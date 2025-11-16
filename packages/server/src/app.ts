@@ -22,7 +22,7 @@ const app = express();
 
 const allowedOrigins = [
   "http://localhost:3000",
-  "https://hotel-inventory-2sgjn3usv-rohan-sharmas-projects-f53d3ef5.vercel.app"
+  "https://hotel-inventory-app.vercel.app"
 ];
 
 app.use(cors({ origin: allowedOrigins, credentials: true }));
