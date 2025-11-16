@@ -6,7 +6,6 @@
     "outDir": "dist",
     "rootDir": "src",
     "baseUrl": ".",
-    /* This package has no internal aliases */
     "paths": {} 
   },
   "include": ["src/**/*"],
