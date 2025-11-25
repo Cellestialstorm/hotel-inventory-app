@@ -50,7 +50,7 @@ app.use('/api', generalLimiter);
 
 // --- Routes ---
 
-app.get("/", (req, res) => {
+app.get("/", (_req, res) => {
   res.send("API is running 🚀");
 });
 

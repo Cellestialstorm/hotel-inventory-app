@@ -12,10 +12,12 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-
     "esModuleInterop": true,
     "skipLibCheck": true,
     "strict": true
+  },
+  "ts-node": {
+    "files": true
   },
 
   "include": ["src"],
