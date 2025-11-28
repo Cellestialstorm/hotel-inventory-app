@@ -48,7 +48,7 @@ export const ItemService = {
     return item;
   },
 
-  async updateItem(itemId: string, data: Partial<{ name: string; minStock: number; category?:string; unit?:string }>) {
+  async updateItem(itemId: string, data: Partial<{ name: string; minStock: number; category?: string; unit?: string }>) {
     const item = await Item.findById(itemId);
     if (!item) throw new ApiError(404, 'Item not found', 'ITEM_NOT_FOUND');
 
@@ -90,28 +90,36 @@ export const ItemService = {
     return item;
   },
 
-  async transfer(itemId: string, toHotelId: string | undefined, toDeptId: string | undefined, qty: number, remarks?: string, user?: any) {
+  async transfer(
+    itemId: string,
+    toHotelId: string | undefined,
+    toDeptId: string | undefined,
+    qty: number,
+    remarks?: string,
+    user?: any
+  ) {
     const item = await Item.findById(itemId);
-    if (!item) throw new ApiError(404, 'Item not found', 'ITEM_NOT_FOUND');
-    if (item.currentStock < qty) throw new ApiError(400, 'Insufficient stock', 'INSUFFICIENT_STOCK');
+    if (!item) throw new ApiError(404, "Item not found", "ITEM_NOT_FOUND");
+    if (item.currentStock < qty)
+      throw new ApiError(400, "Insufficient stock", "INSUFFICIENT_STOCK");
 
     item.currentStock -= qty;
     await item.save();
 
-    await TransactionService.create({
-      itemId: item._id,
-      hotelId: item.hotelId,
-      departmentId: item.departmentId,
-      type: ItemTransactionType.TRANSFER_OUT,
-      quantity: qty,
-      remarks,
-      createdBy: user?.username
+    const destHotel = toHotelId
+      ? new mongoose.Types.ObjectId(toHotelId)
+      : item.hotelId;
+
+    const destDept = toDeptId
+      ? new mongoose.Types.ObjectId(toDeptId)
+      : item.departmentId;
+
+    let target = await Item.findOne({
+      name: item.name,
+      hotelId: destHotel,
+      departmentId: destDept,
     });
 
-    const destHotel = toHotelId ? new mongoose.Types.ObjectId(toHotelId) : item.hotelId;
-    const destDept = toDeptId ? new mongoose.Types.ObjectId(toDeptId) : item.departmentId;
-
-    let target = await Item.findOne({ name: item.name, hotelId: destHotel, departmentId: destDept });
     if (!target) {
       target = new Item({
         name: item.name,
@@ -120,7 +128,7 @@ export const ItemService = {
         currentStock: qty,
         minStock: item.minStock,
         category: item.category,
-        unit: item.unit
+        unit: item.unit,
       });
       await target.save();
     } else {
@@ -129,14 +137,25 @@ export const ItemService = {
     }
 
     await TransactionService.create({
+      itemId: item._id,
+      hotelId: item.hotelId,
+      departmentId: item.departmentId,
+      type: ItemTransactionType.TRANSFER_OUT,
+      quantity: qty,
+      remarks,
+      relatedId: target._id,
+      createdBy: user?.username,
+    });
+
+    await TransactionService.create({
       itemId: target._id,
       hotelId: destHotel,
       departmentId: destDept,
       type: ItemTransactionType.TRANSFER_IN,
       quantity: qty,
-      relatedId: item._id,
       remarks,
-      createdBy: user?.username
+      relatedId: item._id,
+      createdBy: user?.username,
     });
 
     return { from: item, to: target };

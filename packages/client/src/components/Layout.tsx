@@ -41,7 +41,7 @@ const Layout = ({ children }: LayoutProps) => {
     const fetchHotels = async () => {
       try {
         const res = await apiClient.get('/hotels', {
-          headers: { Authorization: `Bearer ${accessToken}`},
+          headers: { Authorization: `Bearer ${accessToken}` },
         });
         setHotels(res.data.data || []);
       } catch (error: any) {
@@ -83,7 +83,7 @@ const Layout = ({ children }: LayoutProps) => {
     <div className="min-h-screen bg-background">
       {/* Top Navbar */}
       <header className="sticky top-0 z-50 border-b bg-card">
-        <div className="flex h-16 items-center px-4 gap-4">
+        <div className="flex h-16 items-center px-4 gap-4 justify-between">
           <Button
             variant="ghost"
             size="icon"
@@ -102,7 +102,7 @@ const Layout = ({ children }: LayoutProps) => {
             {user?.role === UserRole.ADMIN && (
               <>
                 <Select value={selectedHotelId ?? undefined} onValueChange={(v) => setSelectedHotelId(v)}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-[180px] shrink-0">
                     <SelectValue placeholder="Select Hotel" />
                   </SelectTrigger>
                   <SelectContent>
@@ -146,20 +146,19 @@ const Layout = ({ children }: LayoutProps) => {
       <div className="flex">
         {/* Sidebar */}
         <aside
-          className={`fixed lg:sticky top-16 left-0 z-40 h-[calc(100vh-4rem)] w-64 border-r bg-sidebar transition-transform duration-300 ${
+          className={`fixed lg:sticky top-16 left-0 z-40 h-[calc(100vh-4rem)] w-64 border-r bg-sidebar transition-transform duration-300 flex flex-col ${ // ADDED: flex flex-col
             sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-          }`}
+            }`}
         >
-          <nav className="flex flex-col gap-1 p-4">
+          <nav className="flex flex-col gap-1 p-4 flex-1">
             {navigation.map((item) => {
               const isActive = location.pathname === item.path;
               return (
                 <Button
                   key={item.path}
                   variant={isActive ? 'secondary' : 'ghost'}
-                  className={`justify-start gap-3 ${
-                    isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground'
-                  }`}
+                  className={`justify-start gap-3 ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground'
+                    }`}
                   onClick={() => {
                     navigate(item.path);
                     setSidebarOpen(false);
@@ -171,13 +170,15 @@ const Layout = ({ children }: LayoutProps) => {
               );
             })}
           </nav>
+
+          <div className="p-4 pt-2 text-xs text-sidebar-foreground/50 border-t border-sidebar-border">
+            Made by students of Medhavi
+          </div>
         </aside>
 
         {/* Main Content */}
         <main className="flex-1 p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto">
             {children}
-          </div>
         </main>
       </div>
 

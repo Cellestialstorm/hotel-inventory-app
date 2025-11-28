@@ -9,7 +9,14 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Eye } from 'lucide-react';
+import { Eye, Info } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { useAuth } from '@/context/AuthContext';
 import apiClient from '@/api/axios';
 import { toast } from 'sonner';
@@ -24,6 +31,7 @@ interface ReportProps {
 const StockReport = ({ filters }: ReportProps) => {
   const { selectedDepartment } = filters;
   const { accessToken, user, selectedHotelId } = useAuth();
+
   const today = new Date().toISOString().split('T')[0];
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
@@ -48,46 +56,40 @@ const StockReport = ({ filters }: ReportProps) => {
     { key: 'minReorderQty', label: 'Min' },
   ];
 
-
   const [visibleColumns, setVisibleColumns] = useState<string[]>(
-    optionalColumns.map((col) => col.key)
+    optionalColumns.map((c) => c.key)
   );
+
+  // Detail modal
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<any | null>(null);
 
   const fetchReport = async (isInitial = false) => {
     if (isInitial) setLoading(true);
     else setReportsLoading(true);
 
     try {
-      if (user?.role === UserRole.ADMIN && !selectedHotelId) {
-        setData([]);
-        setLoading(false);
-        setReportsLoading(true);
-        return;
-      }
-
-      const params: any = {
-        from,
-        to
-      };
+      const params: any = { from, to };
 
       if (user?.role === UserRole.ADMIN) {
         params.hotelId = selectedHotelId;
-        if (selectedDepartment) params.departmentId = selectedDepartment
+        params.departmentId = selectedDepartment;
       } else {
         params.hotelId = user?.assignedHotelId;
-        params.departmentId = selectedDepartment;
+        params.departmentId = user?.assignedDepartmentId;
       }
 
       const res = await apiClient.get('/reports/stock', {
         headers: { Authorization: `Bearer ${accessToken}` },
         params,
       });
+
       setData(res.data.data || []);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to fetch stock report');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to fetch stock report');
     } finally {
-      if (isInitial) setLoading(false);
-      else setReportsLoading(false);
+      setLoading(false);
+      setReportsLoading(false);
     }
   };
 
@@ -97,165 +99,275 @@ const StockReport = ({ filters }: ReportProps) => {
 
   useEffect(() => {
     fetchReport(false);
-  }, [selectedDepartment])
+  }, [selectedDepartment]);
 
   useEffect(() => {
-    if (from && to) {
-      fetchReport(false);
-    }
+    if (from && to) fetchReport(false);
   }, [from, to]);
 
+  const openDetails = (row: any) => {
+    setSelectedRow(row);
+    setDetailsOpen(true);
+  };
+
+  const closeDetails = () => {
+    setSelectedRow(null);
+    setDetailsOpen(false);
+  };
+
+  // Normalize backend fields for transfers
+  const normalizeTransfers = (row: any) => {
+    if (!row) return [];
+
+    let transfers = row.transferDetails || row.transferLogs || [];
+
+    return transfers.map((t: any) => ({
+      type: t.type || t.transactionType,
+      quantity: t.quantity || 0,
+      date: t.date || t.createdAt,
+      remarks: t.remarks || '',
+      fromDept: t.fromDeptName || t.fromDepartmentName || t.fromDepartment || null,
+      toDept: t.toDeptName || t.toDepartmentName || t.toDepartment || null,
+      fromHotel: t.fromHotelName || null,
+      toHotel: t.toHotelName || null,
+    }));
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>
-            Stock Report
-            <span className="text-sm text-muted-foreground ml-2">
-              ({from === to ? 'Today' : `${from} → ${to}`})
-            </span>
-          </CardTitle>
-          <div className="flex gap-2 items-end">
-            <div>
-              <label className="text-sm text-muted-foreground">From</label>
-              <Input
-                type="date"
-                value={from}
-                max={to || undefined}
-                onChange={(e) => setFrom(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground">To</label>
-              <Input
-                type="date"
-                value={to}
-                min={from || undefined}
-                onChange={(e) => setTo(e.target.value)}
-              />
-            </div>
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>
+              Stock Report
+              <span className="ml-2 text-sm text-muted-foreground">
+                ({from === to ? 'Today' : `${from} → ${to}`})
+              </span>
+            </CardTitle>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <Eye className="w-4 h-4" /> Columns
-                </Button>
-              </DropdownMenuTrigger>
-
-              <DropdownMenuContent className="w-56">
-                <DropdownMenuCheckboxItem
-                  checked={visibleColumns.length === optionalColumns.length}
-                  onCheckedChange={(checked) =>
-                    setVisibleColumns(
-                      checked ? optionalColumns.map((c) => c.key) : []
-                    )
-                  }
-                >
-                  {visibleColumns.length === optionalColumns.length ? 'Hide All' : 'Show All'}
-                </DropdownMenuCheckboxItem>
-
-                <DropdownMenuSeparator />
-
-                {optionalColumns.map((col) => (
-                  <DropdownMenuCheckboxItem
-                    key={col.key}
-                    checked={visibleColumns.includes(col.key)}
-                    onCheckedChange={(checked) => {
-                      setVisibleColumns((prev) =>
-                        checked
-                          ? [...prev, col.key]
-                          : prev.filter((k) => k !== col.key)
-                      );
-                    }}
-                  >
-                    {col.label}
-                  </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent>
-        {loading ? (
-          <p>Loading report...</p>
-        ) : data.length === 0 ? (
-          <p className="text-muted-foreground py-8 text-center">
-            No report data available for the selected period.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            {reportsLoading && (
-              <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="flex items-end gap-2">
+              <div>
+                <label className="text-sm text-muted-foreground">From</label>
+                <Input
+                  type="date"
+                  value={from}
+                  max={to || undefined}
+                  onChange={(e) => setFrom(e.target.value)}
+                />
               </div>
-            )}
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b bg-muted">
-                  <th className="p-2 text-left">Item Name</th>
+              <div>
+                <label className="text-sm text-muted-foreground">To</label>
+                <Input
+                  type="date"
+                  value={to}
+                  max={today || undefined}
+                  min={from || undefined}
+                  onChange={(e) => setTo(e.target.value)}
+                />
+              </div>
 
-                  {/* Optional columns */}
-                  {optionalColumns.map(
-                    (col) =>
-                      visibleColumns.includes(col.key) && (
-                        <th key={col.key} className="p-2 text-right">
-                          {col.label}
-                        </th>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Eye className="w-4 h-4" /> Columns
+                  </Button>
+                </DropdownMenuTrigger>
+
+                <DropdownMenuContent className="w-56">
+                  <DropdownMenuCheckboxItem
+                    checked={visibleColumns.length === optionalColumns.length}
+                    onCheckedChange={(checked) =>
+                      setVisibleColumns(
+                        checked ? optionalColumns.map((c) => c.key) : []
                       )
-                  )}
+                    }
+                  >
+                    {visibleColumns.length === optionalColumns.length
+                      ? 'Hide All'
+                      : 'Show All'}
+                  </DropdownMenuCheckboxItem>
 
-                  {/* Mandatory columns (always visible) */}
-                  {mandatoryColumns.map((col) => (
-                    <th key={col.key} className="p-2 text-right">
+                  <DropdownMenuSeparator />
+
+                  {optionalColumns.map((col) => (
+                    <DropdownMenuCheckboxItem
+                      key={col.key}
+                      checked={visibleColumns.includes(col.key)}
+                      onCheckedChange={(checked) => {
+                        setVisibleColumns((prev) =>
+                          checked
+                            ? [...prev, col.key]
+                            : prev.filter((k) => k !== col.key)
+                        );
+                      }}
+                    >
                       {col.label}
-                    </th>
+                    </DropdownMenuCheckboxItem>
                   ))}
-                </tr>
-              </thead>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </CardHeader>
 
-              <tbody>
-                {data.map((r) => (
-                  <tr key={r.itemId} className="border-b hover:bg-muted/50">
-                    <td className="p-2">{r.name}</td>
+        <CardContent>
+          {loading ? (
+            <p>Loading report...</p>
+          ) : data.length === 0 ? (
+            <p className="py-8 text-center text-muted-foreground">
+              No report data available for the selected period.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b bg-muted">
+                    <th className="p-2 text-left">Item Name</th>
 
-                    {/* Optional columns */}
                     {optionalColumns.map(
                       (col) =>
                         visibleColumns.includes(col.key) && (
-                          <td
-                            key={col.key}
-                            className={`p-2 text-right ${col.key === 'damages' && r[col.key] > 0
-                                ? 'text-danger font-semibold'
-                                : ''
-                              }`}
-                          >
-                            {r[col.key] ?? 0}
-                          </td>
+                          <th className="p-2 text-right" key={col.key}>
+                            {col.label}
+                          </th>
                         )
                     )}
 
-                    {/* Mandatory columns */}
                     {mandatoryColumns.map((col) => (
-                      <td
-                        key={col.key}
-                        className={`p-2 text-right ${col.key === 'shortage' && r.shortage > 0
-                            ? 'text-danger font-semibold'
-                            : ''
-                          }`}
-                      >
-                        {r[col.key] ?? 0}
-                      </td>
+                      <th className="p-2 text-right" key={col.key}>
+                        {col.label}
+                      </th>
                     ))}
                   </tr>
+                </thead>
+
+                <tbody>
+                  {data.map((r) => (
+                    <tr
+                      key={r.itemId}
+                      onClick={() => openDetails(r)}
+                      className={`
+                        border-b cursor-pointer 
+                        ${r.shortage > 0 ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-muted/50'}
+                      `}
+                    >
+                      <td className="p-2">{r.name}</td>
+
+                      {optionalColumns.map(
+                        (col) =>
+                          visibleColumns.includes(col.key) && (
+                            <td className="p-2 text-right" key={col.key}>
+                              {r[col.key] ?? 0}
+                            </td>
+                          )
+                      )}
+
+                      {mandatoryColumns.map((col) => (
+                        <td className="p-2 text-right" key={col.key}>
+                          {r[col.key] ?? 0}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* DETAILS MODAL */}
+      <Dialog open={detailsOpen} onOpenChange={(v) => !v && closeDetails()}>
+        <DialogContent className="sm:max-w-[650px]">
+          <DialogHeader>
+            <DialogTitle>{selectedRow?.name} — Details</DialogTitle>
+          </DialogHeader>
+
+          {/* DAMAGE DETAILS */}
+          <div className="mt-4">
+            <p className="text-sm font-medium">Damage Remarks</p>
+
+            {selectedRow?.damageDetails?.length > 0 ? (
+              <div className="mt-2 space-y-3 max-h-48 overflow-y-auto">
+                {selectedRow.damageDetails.map((d: any, i: number) => (
+                  <div
+                    key={i}
+                    className="border rounded-md p-3 bg-red-50 border-red-200"
+                  >
+                    <p className="font-semibold text-red-600">
+                      -{d.quantity} damaged
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(d.date).toLocaleString()}
+                    </p>
+                    <p className="text-sm mt-1">
+                      {d.remarks || (
+                        <span className="italic text-muted-foreground">
+                          No remarks
+                        </span>
+                      )}
+                    </p>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            ) : (
+              <p className="italic text-muted-foreground mt-1">No damage remarks</p>
+            )}
           </div>
-        )}
-      </CardContent>
-    </Card>
+
+          {/* TRANSFER DETAILS */}
+          <div className="mt-6">
+            <p className="text-sm font-medium">Transfer Details</p>
+
+            {normalizeTransfers(selectedRow).length > 0 ? (
+              <div className="mt-2 space-y-3 max-h-64 overflow-y-auto">
+                {normalizeTransfers(selectedRow).map((t: any, i: number) => (
+                  <div
+                    key={i}
+                    className="border rounded-md p-3 bg-blue-50 border-blue-200"
+                  >
+                    <p className="font-semibold text-blue-600">
+                      {t.type} — {t.quantity}
+                    </p>
+
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(t.date).toLocaleString()}
+                    </p>
+
+                    <div className="text-sm mt-1">
+                      {t.fromDept && t.toDept && (
+                        <p>
+                          <strong>{t.fromDept}</strong> {'-->'} <strong>{t.toDept}</strong>
+                        </p>
+                      )}
+                      {t.fromHotel !== t.toHotel && (
+                        <p>
+                          <strong>{t.fromHotel}</strong> {'-->'} <strong>{t.toHotel}</strong>
+                        </p>
+                      )}
+
+                      {t.remarks && (
+                        <p className="mt-1 italic text-muted-foreground">
+                          {t.remarks}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="italic text-muted-foreground mt-2">No transfers found</p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeDetails}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

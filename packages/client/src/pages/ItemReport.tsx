@@ -128,6 +128,8 @@ const ItemReport = ({ filters }: ItemProps) => {
     if (selectedItem) fetchReport();
   }, [selectedItem, from, to]);
 
+  
+
   return (
     <Card>
       <CardHeader>
@@ -176,6 +178,7 @@ const ItemReport = ({ filters }: ItemProps) => {
               <Input
                 type="date"
                 value={to}
+                max={today || undefined}
                 min={from || undefined}
                 onChange={(e) => setTo(e.target.value)}
               />
@@ -255,7 +258,12 @@ const ItemReport = ({ filters }: ItemProps) => {
               </thead>
               <tbody>
                 {data.map((row, idx) => (
-                  <tr key={idx} className="border-b hover:bg-muted/50">
+                  <tr key={idx} 
+                    className={`
+                      border-b cursor-pointer
+                      ${row.shortage > 0 ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-muted/50'}
+                    `}
+                  >
                     <td className="p-2">{row.date}</td>
                     {optionalColumns.map(
                       (col) =>
@@ -277,7 +285,7 @@ const ItemReport = ({ filters }: ItemProps) => {
                         key={col.key}
                         className={`p-2 text-right ${
                           col.key === 'shortage' && row.shortage > 0
-                            ? 'text-danger font-semibold'
+                            ? 'text-red-600 font-semibold'
                             : ''
                         }`}
                       >
