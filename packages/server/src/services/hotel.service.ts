@@ -159,16 +159,9 @@ const deleteHotel = async (hotelId: string): Promise<boolean> => {
     }
 
     try {
-        // Soft delete
-        hotel.isActive = false;
-        await hotel.save();
-        logger.info(`Hotel deactivated (soft deleted): ${hotel.name} (ID: ${hotel.hotelId})`);
+        await Hotel.findByIdAndDelete(hotel._id);
+        logger.info(`Hotel permenantly deleted: ${hotel.name} (ID: ${hotel.hotelId})`);
         return true;
-
-        //Hard Delete
-        // await Hotel.findByIdAndDelete(hotel._id);
-        // logger.info(`Hotel permenantly deleted: ${hotel.name} (ID: ${hotel.hotelId})`);
-        // return true;
     } catch (error: any) {
         logger.error(`Error deleting hotel ${hotelId}: {error.message}`, { error });
         throw new ApiError(500, 'Failed to delete hotel', 'DATABASE_ERROR', error);

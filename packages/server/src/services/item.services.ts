@@ -5,6 +5,7 @@ import ApiError from '@/utils/ApiError';
 import mongoose from 'mongoose';
 import { TransactionService } from '@/services/transaction.service';
 import { ItemTransactionType } from '@hotel-inventory/shared';
+import logger from '@/utils/logger';
 
 export const ItemService = {
   async createItem(payload: {
@@ -64,9 +65,8 @@ export const ItemService = {
   async deleteItem(itemId: string) {
     const item = await Item.findById(itemId);
     if (!item) throw new ApiError(404, 'Item not found', 'ITEM_NOT_FOUND');
-    // soft delete
-    item.isActive = false;
-    await item.save();
+    await Item.findByIdAndDelete(itemId);
+    logger.info(`Item permanently deleted: ${item.name} (ID: ${item._id})`);
     return true;
   },
 
@@ -159,6 +159,30 @@ export const ItemService = {
     });
 
     return { from: item, to: target };
+  },
+
+  async returnToVendor(itemId: string, qty: number, remarks?: string, user?: any) {
+    const item = await Item.findById(itemId);
+    if (!item) throw new ApiError(404, 'Item not found', 'ITEM_NOT_FOUND');
+    
+    if (item.currentStock < qty) {
+      throw new ApiError(400, 'Insufficient stock to return', 'INSUFFICIENT_STOCK');
+    }
+
+    item.currentStock -= qty;
+    await item.save();
+
+    await TransactionService.create({
+      itemId: item._id,
+      hotelId: item.hotelId,
+      departmentId: item.departmentId,
+      type: ItemTransactionType.RETURN_VENDOR,
+      quantity: qty,
+      remarks,
+      createdBy: user?.username
+    });
+
+    return item;
   },
 
   async list(filter: any = {}) {

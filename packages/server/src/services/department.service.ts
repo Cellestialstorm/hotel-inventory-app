@@ -5,7 +5,7 @@ import Hotel from '@/models/Hotel.model';
 import ApiError from '@/utils/ApiError';
 import logger from '@/utils/logger';
 import { ICreateDepartmentRequest, IUpdateDepartmentRequest } from '@hotel-inventory/shared';
-
+import ItemModel from '@/models/Item.model';
 
 /**
  * Create a new department
@@ -162,26 +162,19 @@ const deleteDepartment = async (departmentId: string): Promise<boolean> => {
     const department = await getDepartmentById(departmentId);
     if (!department) return false;
 
-    // TODO: Implement checks - cannot delete if users or items are assigned to it.
     const usersExist = await User.exists({ assignedDepartmentId: department._id, isActive: true });
     if (usersExist) {
       throw new ApiError(400, 'Cannot delete department: Users are currently assigned to it.', 'DEPARTMENT_IN_USE');
     }
-    // const itemsExist = await Item.exists({ departmentId: department._id, isActive: true });
-    // if (itemsExist) {
-    //    throw new ApiError(400, 'Cannot delete department: Inventory items are currently assigned to it.', 'DEPARTMENT_IN_USE');
-    // }
+    const itemsExist = await ItemModel.exists({ departmentId: department._id, isActive: true });
+    if (itemsExist) {
+       throw new ApiError(400, 'Cannot delete department: Inventory items are currently assigned to it.', 'DEPARTMENT_IN_USE');
+    }
 
     try {
-        department.isActive = false;
-        await department.save();
-        logger.info(`Department deactivated: ${department.name} (ID: ${department.departmentId})`);
+        await Department.findByIdAndDelete(department._id);
+        logger.info(`Department permanently deleted: ${department.name} (ID: ${department.departmentId})`);
         return true;
-
-        // Option 2: Hard delete (use with caution)
-        // await Department.findByIdAndDelete(department._id);
-        // logger.info(`Department permanently deleted: ${department.name} (ID: ${department.departmentId})`);
-        // return true;
     } catch (error: any) {
         logger.error(`Error deleteing department ${departmentId}: ${error.message}`, { error });
         throw new ApiError(500, 'Failed to delete department', 'DATABASE_ERROR', error);

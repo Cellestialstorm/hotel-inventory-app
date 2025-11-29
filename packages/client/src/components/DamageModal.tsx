@@ -32,7 +32,7 @@ const DamageModal = ({ open, onOpenChange, item, onSave }: any) => {
         <div className="space-y-4 py-4">
           <div><Label>Item</Label><div>{item?.name}</div></div>
           <div><Label>Quantity</Label><Input type="number" value={qty} onChange={e=>setQty(Number(e.target.value))} min={1} /></div>
-          <div><Label>Remarks</Label><Input value={remarks} onChange={e=>setRemarks(e.target.value)} /></div>
+          <div><Label>Reason / Remarks</Label><Input value={remarks} placeholder="e.g., Defective, Expired, Overstock" onChange={e=>setRemarks(e.target.value)} /></div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={()=>onOpenChange(false)}>Cancel</Button>

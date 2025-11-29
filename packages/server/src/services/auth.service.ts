@@ -17,17 +17,15 @@ const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || 'your_refresh_t
  */
 
 const register = async (userData: IRegisterRequest): Promise<Omit<IUSER, 'password' | 'comparePassword'>> => {
-    // Note: IRegisterRequest doesn't have assignedHotelId and assignedDepartmentId directly
-    // These would need to be passed separately or handled differently
     const { username, password, role = UserRole.USER, assignedDepartmentId, assignedHotelId } = userData;
 
     if (!username || !password || !assignedHotelId || !assignedDepartmentId) {
         throw new ApiError(400, 'Missing required fields', 'Validation_Error');
     }
 
-    const existingUser = await User.findOne({ $or: [{ username }, { assignedHotelId }] }).lean();
+    const existingUser = await User.findOne({ $or: [{ username }] }).lean();
     if (existingUser) {
-        throw new ApiError(409, 'Username or email already exists', 'Conflict_Error');
+        throw new ApiError(409, 'Username already exists', 'Conflict_Error');
     }
 
     const uniqueUserId = new mongoose.Types.ObjectId().toString();

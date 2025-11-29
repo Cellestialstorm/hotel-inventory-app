@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Search, Edit, Trash2, Package, ArrowRightLeft } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Package, ArrowRightLeft, Undo2 } from 'lucide-react';
 import ItemModal from '@/components/ItemModal';
 import {
   Select,
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import DamageModal from '@/components/DamageModal';
 import TransferModal from '@/components/TransferModal';
+import ReturnModal from '@/components/ReturnModal';
 import DeleteConfirmDialog from '@/components/DeleteConfirmDialog';
 import { toast } from 'sonner';
 import apiClient from '@/api/axios';
@@ -24,9 +25,11 @@ const Inventory = () => {
   const [items, setItems] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [damageModalOpen, setDamageModalOpen] = useState(false);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -106,6 +109,7 @@ const Inventory = () => {
   const onEdit = (it:any) => { setSelectedItem(it); setItemModalOpen(true); };
   const onDamage = (it:any) => { setSelectedItem(it); setDamageModalOpen(true); };
   const onTransfer = (it:any) => { setSelectedItem(it); setTransferModalOpen(true); };
+  const onReturn = (it:any) => { setSelectedItem(it); setReturnModalOpen(true); };
   const onDelete = (it:any) => { setSelectedItem(it); setDeleteDialogOpen(true); };
 
   const confirmDelete = async () => {
@@ -197,6 +201,10 @@ const Inventory = () => {
                             <Button size="icon" variant="ghost" onClick={() => onTransfer(it)}>
                               <ArrowRightLeft className="w-4 h-4" />
                             </Button>
+                            <Button size="icon" variant="ghost" onClick={() => onReturn(it)}>
+                              <Undo2 className="w-4 h-4" />
+                            </Button>
+                            
                             {user?.role === 'ADMIN' && (
                               <Button size="icon" variant="ghost" className="text-danger" onClick={() => onDelete(it)}>
                                 <Trash2 className="w-4 h-4" />
@@ -217,6 +225,7 @@ const Inventory = () => {
       <ItemModal open={itemModalOpen} onOpenChange={setItemModalOpen} item={selectedItem} onSave={loadItems} />
       <DamageModal open={damageModalOpen} onOpenChange={setDamageModalOpen} item={selectedItem} onSave={loadItems} />
       <TransferModal open={transferModalOpen} onOpenChange={setTransferModalOpen} item={selectedItem} onSave={loadItems} />
+      <ReturnModal open={returnModalOpen} onOpenChange={setReturnModalOpen} item={selectedItem} onSave={loadItems} />
       <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} itemName={selectedItem?.name || ''} onConfirm={confirmDelete} loading={deleteLoading} />
     </div>
   );

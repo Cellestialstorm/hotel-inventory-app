@@ -37,3 +37,9 @@ export const transfer = asyncHandler(async (req: Request, res: Response) => {
   const result = await ItemService.transfer(itemId, toHotelId, toDepartmentId, quantity, remarks, req.user);
   res.json(new ApiResponse(200, result, 'Transfer done'));
 });
+
+export const returnToVendor = asyncHandler(async (req: Request, res: Response) => {
+  const { itemId, quantity, remarks } = req.body;
+  const item = await ItemService.returnToVendor(itemId, quantity || 1, remarks, req.user);
+  res.json(new ApiResponse(200, item, 'Returned to vendor successfully'));
+});

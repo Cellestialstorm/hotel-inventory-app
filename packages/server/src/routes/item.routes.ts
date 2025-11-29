@@ -12,5 +12,6 @@ router.put('/:id', checkAdminOnly, ItemCtrl.updateItem);
 router.delete('/:id', checkAdminOnly, ItemCtrl.deleteItem);
 router.post('/damage', ItemCtrl.markDamage);
 router.post('/transfer', ItemCtrl.transfer);
+router.post('/return', ItemCtrl.returnToVendor);
 
 export default router;

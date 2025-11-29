@@ -103,30 +103,12 @@ const updateUser = async (
  */
 
 const deleteUser = async (userId: string): Promise<boolean> => {
-
-    const updateResult = await User.updateOne(
-        { userId: userId },
-        { $set: { isActive: false } }
-    );
-
-    if (updateResult.matchedCount === 0) {
+    const deleteResult = await User.deleteOne({ userId: userId });
+    if (deleteResult.deletedCount === 0) {
         throw new ApiError(404, `User with ID ${userId} not found`, 'USER_NOT_FOUND');
     }
-
-    if (updateResult.modifiedCount === 0) {
-        logger.warn(`User ${userId} was already inacive or no change was made.`);
-    }
-
-    logger.info(`User deactivated (soft delete): ID ${userId}`);
+    logger.info(`User permanently deleted: ID ${userId}`);
     return true;
-
-    // // Hard delete alternative (use with caution)
-    // const deleteResult = await User.deleteOne({ userId: userId });
-    // if (deleteResult.deletedCount === 0) {
-    //     throw new ApiError(404, `User with ID ${userId} not found`, 'USER_NOT_FOUND');
-    // }
-    // logger.info(`User permanently deleted: ID ${userId}`);
-    // return true;
 };
 
 
