@@ -1,26 +1,27 @@
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { Eye, Info } from 'lucide-react';
+} from '../components/ui/dropdown-menu';
+import { Button } from '../components/ui/button';
+import { Eye, AlertTriangle, ArrowRightLeft, Undo2, ChevronRight, ArrowLeft } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog';
-import { useAuth } from '@/context/AuthContext';
-import apiClient from '@/api/axios';
+  DialogDescription,
+} from '../components/ui/dialog';
+import { useAuth } from '../context/AuthContext';
+import apiClient from '../api/axios';
 import { toast } from 'sonner';
-import { UserRole } from '@hotel-inventory/shared';
+import { UserRole } from '../../../shared/src';
 
 interface ReportProps {
   filters: {
@@ -28,16 +29,30 @@ interface ReportProps {
   };
 }
 
+type DetailType = 'damage' | 'transfer' | 'return' | null;
+
 const StockReport = ({ filters }: ReportProps) => {
   const { selectedDepartment } = filters;
   const { accessToken, user, selectedHotelId } = useAuth();
-
-  const today = new Date().toISOString().split('T')[0];
+  const getTodayString = () => {
+    const d = new Date();
+    const offset = d.getTimezoneOffset(); // Gets offset in minutes
+    const localDate = new Date(d.getTime() - (offset * 60 * 1000)); // Adjusts time
+    return localDate.toISOString().split('T')[0]; // Now returns correct local date
+  };
+  const [today] = useState(getTodayString());
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [reportsLoading, setReportsLoading] = useState(false);
+
+  const [selectionOpen, setSelectionOpen] = useState(false);
+
+  // State for the Detailed Report Dialog
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
+  const [selectedRow, setSelectedRow] = useState<any | null>(null);
+  const [detailType, setDetailType] = useState<DetailType>(null);
 
   const mandatoryColumns = [
     { key: 'closingBalance', label: 'Closing' },
@@ -47,12 +62,12 @@ const StockReport = ({ filters }: ReportProps) => {
   const optionalColumns = [
     { key: 'openingBalance', label: 'Opening' },
     { key: 'added', label: 'Added' },
-    { key: 'damages', label: 'Damaged' },
-    { key: 'returnedToVendor', label: 'Returned' },
-    { key: 'transferInterDeptIn', label: 'Dept In' },
-    { key: 'transferInterDeptOut', label: 'Dept Out' },
-    { key: 'transferInterHotelIn', label: 'Hotel In' },
-    { key: 'transferInterHotelOut', label: 'Hotel Out' },
+    { key: 'damages', label: 'Damaged', hasDetails: true },
+    { key: 'returnedToVendor', label: 'Returned', hasDetails: true },
+    { key: 'transferInterDeptIn', label: 'Dept In', hasDetails: true },
+    { key: 'transferInterDeptOut', label: 'Dept Out', hasDetails: true },
+    { key: 'transferInterHotelIn', label: 'Hotel In', hasDetails: true },
+    { key: 'transferInterHotelOut', label: 'Hotel Out', hasDetails: true },
     { key: 'minReorderQty', label: 'Min' },
   ];
 
@@ -60,13 +75,8 @@ const StockReport = ({ filters }: ReportProps) => {
     optionalColumns.map((c) => c.key)
   );
 
-  // Detail modal
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [selectedRow, setSelectedRow] = useState<any | null>(null);
-
   const fetchReport = async (isInitial = false) => {
     if (isInitial) setLoading(true);
-    else setReportsLoading(true);
 
     try {
       const params: any = { from, to };
@@ -89,7 +99,6 @@ const StockReport = ({ filters }: ReportProps) => {
       toast.error(err.response?.data?.message || 'Failed to fetch stock report');
     } finally {
       setLoading(false);
-      setReportsLoading(false);
     }
   };
 
@@ -105,22 +114,43 @@ const StockReport = ({ filters }: ReportProps) => {
     if (from && to) fetchReport(false);
   }, [from, to]);
 
-  const openDetails = (row: any) => {
+  // 1. Opens the Menu Dialog (Row Click)
+  const openSelectionMenu = (row: any) => {
     setSelectedRow(row);
-    setDetailsOpen(true);
+    setSelectionOpen(true);
+  };
+
+  // 2. Selects a type from Menu and opens Detail Dialog
+  const selectReportType = (type: DetailType) => {
+    setSelectionOpen(false);
+    // Short delay to allow first dialog to close smoothly before opening next
+    setTimeout(() => {
+      setDetailType(type);
+      setDetailsOpen(true);
+    }, 150);
+  };
+
+  // 3. Back function: Close Details, Open Selection
+  const goBackToSelection = () => {
+    setDetailsOpen(false);
+    setTimeout(() => {
+      setDetailType(null);
+      setSelectionOpen(true);
+    }, 150);
   };
 
   const closeDetails = () => {
-    setSelectedRow(null);
     setDetailsOpen(false);
+    setTimeout(() => {
+      setSelectedRow(null);
+      setDetailType(null);
+    }, 300);
   };
 
-  // Normalize backend fields for transfers
+  // Helper functions
   const normalizeTransfers = (row: any) => {
     if (!row) return [];
-
-    let transfers = row.transferDetails || row.transferLogs || [];
-
+    const transfers = row.transferDetails || row.transferLogs || [];
     return transfers.map((t: any) => ({
       type: t.type || t.transactionType,
       quantity: t.quantity || 0,
@@ -132,6 +162,9 @@ const StockReport = ({ filters }: ReportProps) => {
       toHotel: t.toHotelName || null,
     }));
   };
+
+  const getReturnDetails = (row: any) => row?.returnDetails || [];
+  const getDamageDetails = (row: any) => row?.damageDetails || [];
 
   return (
     <>
@@ -245,25 +278,39 @@ const StockReport = ({ filters }: ReportProps) => {
                   {data.map((r) => (
                     <tr
                       key={r.itemId}
-                      onClick={() => openDetails(r)}
                       className={`
-                        border-b cursor-pointer 
+                        border-b cursor-pointer transition-colors 
                         ${r.shortage > 0 ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-muted/50'}
                       `}
+                      onClick={() => openSelectionMenu(r)}
                     >
-                      <td className="p-2">{r.name}</td>
+                      <td className="p-2 font-medium flex items-center gap-2">
+                        {r.name}
+                      </td>
 
                       {optionalColumns.map(
-                        (col) =>
+                        (col: any) =>
                           visibleColumns.includes(col.key) && (
-                            <td className="p-2 text-right" key={col.key}>
+                            <td
+                              key={col.key}
+                              className={`p-2 text-right ${col.key === 'damages' && r[col.key] > 0
+                                ? 'text-danger font-semibold'
+                                : ''
+                                }`}
+                            >
                               {r[col.key] ?? 0}
                             </td>
                           )
                       )}
 
                       {mandatoryColumns.map((col) => (
-                        <td className="p-2 text-right" key={col.key}>
+                        <td
+                          key={col.key}
+                          className={`p-2 text-right ${col.key === 'shortage' && r.shortage > 0
+                              ? 'text-red-600 font-semibold'
+                              : ''
+                            }`}
+                        >
                           {r[col.key] ?? 0}
                         </td>
                       ))}
@@ -276,87 +323,187 @@ const StockReport = ({ filters }: ReportProps) => {
         </CardContent>
       </Card>
 
-      {/* DETAILS MODAL */}
-      <Dialog open={detailsOpen} onOpenChange={(v) => !v && closeDetails()}>
+      {/* 1. SELECTION MENU DIALOG */}
+      <Dialog open={selectionOpen} onOpenChange={setSelectionOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Reports for {selectedRow?.name}</DialogTitle>
+            <DialogDescription>Select which transaction details you want to view.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div
+              className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-all border-l-4 border-l-orange-500"
+              onClick={() => selectReportType('damage')}
+            >
+              <div className="flex items-center gap-4">
+                <div className="p-2 bg-orange-100 rounded-full text-orange-600">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="font-medium">Damage Report</div>
+                  <div className="text-xs text-muted-foreground">View wasted or damaged stock</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <span className="font-mono font-bold text-foreground">{Math.abs(selectedRow?.damages || 0)}</span>
+                <ChevronRight className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div
+              className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-all border-l-4 border-l-blue-500"
+              onClick={() => selectReportType('transfer')}
+            >
+              <div className="flex items-center gap-4">
+                <div className="p-2 bg-blue-100 rounded-full text-blue-600">
+                  <ArrowRightLeft className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="font-medium">Transfer History</div>
+                  <div className="text-xs text-muted-foreground">Incoming and outgoing transfers</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <span className="font-mono font-bold text-foreground">View</span>
+                <ChevronRight className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div
+              className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-all border-l-4 border-l-purple-500"
+              onClick={() => selectReportType('return')}
+            >
+              <div className="flex items-center gap-4">
+                <div className="p-2 bg-purple-100 rounded-full text-purple-600">
+                  <Undo2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="font-medium">Returned to Vendor</div>
+                  <div className="text-xs text-muted-foreground">Stock sent back to suppliers</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <span className="font-mono font-bold text-foreground">{Math.abs(selectedRow?.returnedToVendor || 0)}</span>
+                <ChevronRight className="w-4 h-4" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectionOpen(false)}>Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 2. DETAILS DIALOG */}
+      <Dialog open={detailsOpen} onOpenChange={closeDetails}>
         <DialogContent className="sm:max-w-[650px]">
           <DialogHeader>
-            <DialogTitle>{selectedRow?.name} — Details</DialogTitle>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2" onClick={goBackToSelection}>
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+              <DialogTitle>
+                {selectedRow?.name} —
+                {detailType === 'damage' && ' Damage Report'}
+                {detailType === 'return' && ' Vendor Returns'}
+                {detailType === 'transfer' && ' Transfer History'}
+              </DialogTitle>
+            </div>
           </DialogHeader>
 
-          {/* DAMAGE DETAILS */}
           <div className="mt-4">
-            <p className="text-sm font-medium">Damage Remarks</p>
-
-            {selectedRow?.damageDetails?.length > 0 ? (
-              <div className="mt-2 space-y-3 max-h-48 overflow-y-auto">
-                {selectedRow.damageDetails.map((d: any, i: number) => (
-                  <div
-                    key={i}
-                    className="border rounded-md p-3 bg-red-50 border-red-200"
-                  >
-                    <p className="font-semibold text-red-600">
-                      -{d.quantity} damaged
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(d.date).toLocaleString()}
-                    </p>
-                    <p className="text-sm mt-1">
-                      {d.remarks || (
-                        <span className="italic text-muted-foreground">
-                          No remarks
-                        </span>
-                      )}
-                    </p>
+            {/* DAMAGE DETAILS VIEW */}
+            {detailType === 'damage' && (
+              <>
+                {getDamageDetails(selectedRow).length > 0 ? (
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                    {getDamageDetails(selectedRow).map((d: any, i: number) => (
+                      <div key={i} className="border rounded-md p-3 bg-red-50 border-red-200">
+                        <div className="flex justify-between">
+                          <span className="font-semibold text-red-600">-{d.quantity} Damaged</span>
+                          <span className="text-xs text-muted-foreground">{new Date(d.date).toLocaleString()}</span>
+                        </div>
+                        <p className="text-sm mt-1 text-gray-700">
+                          {d.remarks ? `Reason: ${d.remarks}` : <span className="italic text-muted-foreground">No remarks</span>}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="italic text-muted-foreground mt-1">No damage remarks</p>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground border rounded-md border-dashed">
+                    <AlertTriangle className="w-8 h-8 mb-2 opacity-20" />
+                    <p>No damage records found for this period.</p>
+                  </div>
+                )}
+              </>
             )}
-          </div>
 
-          {/* TRANSFER DETAILS */}
-          <div className="mt-6">
-            <p className="text-sm font-medium">Transfer Details</p>
-
-            {normalizeTransfers(selectedRow).length > 0 ? (
-              <div className="mt-2 space-y-3 max-h-64 overflow-y-auto">
-                {normalizeTransfers(selectedRow).map((t: any, i: number) => (
-                  <div
-                    key={i}
-                    className="border rounded-md p-3 bg-blue-50 border-blue-200"
-                  >
-                    <p className="font-semibold text-blue-600">
-                      {t.type} — {t.quantity}
-                    </p>
-
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(t.date).toLocaleString()}
-                    </p>
-
-                    <div className="text-sm mt-1">
-                      {t.fromDept && t.toDept && (
-                        <p>
-                          <strong>{t.fromDept}</strong> {'-->'} <strong>{t.toDept}</strong>
+            {/* RETURN DETAILS VIEW */}
+            {detailType === 'return' && (
+              <>
+                {getReturnDetails(selectedRow).length > 0 ? (
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                    {getReturnDetails(selectedRow).map((d: any, i: number) => (
+                      <div key={i} className="border rounded-md p-3 bg-orange-50 border-orange-200">
+                        <div className="flex justify-between">
+                          <span className="font-semibold text-orange-700">-{d.quantity} Returned</span>
+                          <span className="text-xs text-muted-foreground">{new Date(d.date).toLocaleString()}</span>
+                        </div>
+                        <p className="text-sm mt-1 text-gray-700">
+                          {d.remarks ? `Reason: ${d.remarks}` : <span className="italic text-muted-foreground">No remarks</span>}
                         </p>
-                      )}
-                      {t.fromHotel !== t.toHotel && (
-                        <p>
-                          <strong>{t.fromHotel}</strong> {'-->'} <strong>{t.toHotel}</strong>
-                        </p>
-                      )}
-
-                      {t.remarks && (
-                        <p className="mt-1 italic text-muted-foreground">
-                          {t.remarks}
-                        </p>
-                      )}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="italic text-muted-foreground mt-2">No transfers found</p>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground border rounded-md border-dashed">
+                    <Undo2 className="w-8 h-8 mb-2 opacity-20" />
+                    <p>No vendor returns found for this period.</p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* TRANSFER DETAILS VIEW */}
+            {detailType === 'transfer' && (
+              <>
+                {normalizeTransfers(selectedRow).length > 0 ? (
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                    {normalizeTransfers(selectedRow).map((t: any, i: number) => (
+                      <div key={i} className="border rounded-md p-3 bg-blue-50 border-blue-200">
+                        <div className="flex justify-between">
+                          <span className={`font-semibold ${t.type === 'TRANSFER_IN' ? 'text-green-600' : 'text-blue-600'}`}>
+                            {t.type === 'TRANSFER_IN' ? 'Received' : 'Sent'} {t.quantity}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{new Date(t.date).toLocaleString()}</span>
+                        </div>
+
+                        <div className="text-sm mt-2 grid grid-cols-2 gap-2">
+                          <div>
+                            <span className="text-xs text-muted-foreground block">From</span>
+                            <span className="font-medium">{t.fromHotel ? `${t.fromHotel} / ` : ''}{t.fromDept || 'Unknown'}</span>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground block">To</span>
+                            <span className="font-medium">{t.toHotel ? `${t.toHotel} / ` : ''}{t.toDept || 'Unknown'}</span>
+                          </div>
+                        </div>
+
+                        {t.remarks && (
+                          <p className="mt-2 text-sm italic text-muted-foreground border-t border-blue-200 pt-1">
+                            "{t.remarks}"
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground border rounded-md border-dashed">
+                    <ArrowRightLeft className="w-8 h-8 mb-2 opacity-20" />
+                    <p>No transfer history found for this period.</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

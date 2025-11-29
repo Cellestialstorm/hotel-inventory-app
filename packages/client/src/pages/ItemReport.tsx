@@ -32,7 +32,13 @@ const ItemReport = ({ filters }: ItemProps) => {
   const { selectedDepartment } = filters;
   const { accessToken, user, selectedHotelId } = useAuth();
 
-  const today = new Date().toISOString().split('T')[0];
+  const getTodayString = () => {
+    const d = new Date();
+    const offset = d.getTimezoneOffset(); // Gets offset in minutes
+    const localDate = new Date(d.getTime() - (offset * 60 * 1000)); // Adjusts time
+    return localDate.toISOString().split('T')[0]; // Now returns correct local date
+  };
+  const [today] = useState(getTodayString());
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
 
@@ -148,10 +154,14 @@ const ItemReport = ({ filters }: ItemProps) => {
               <Select
                 value={selectedItem}
                 onValueChange={setSelectedItem}
-                disabled={items.length === 0}
+                disabled={items.length === 0 || loading}
               >
                 <SelectTrigger className="w-[220px]">
-                  <SelectValue placeholder="Select Item" />
+                  {loading ? (
+                    <span>Loading items...</span>
+                  ) : (
+                    <SelectValue placeholder="Select Item" />
+                  )}
                 </SelectTrigger>
                 <SelectContent>
                   {items.map((item) => (

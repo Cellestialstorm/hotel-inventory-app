@@ -102,6 +102,7 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
       return { hotels, departments };
     } catch (err) {
       toast.error('Failed to load hotels or departments');
+      return { hotels: [], departments: [] };
     }
   };
 
