@@ -36,9 +36,9 @@ const StockReport = ({ filters }: ReportProps) => {
   const { accessToken, user, selectedHotelId } = useAuth();
   const getTodayString = () => {
     const d = new Date();
-    const offset = d.getTimezoneOffset(); // Gets offset in minutes
-    const localDate = new Date(d.getTime() - (offset * 60 * 1000)); // Adjusts time
-    return localDate.toISOString().split('T')[0]; // Now returns correct local date
+    const offset = d.getTimezoneOffset();
+    const localDate = new Date(d.getTime() - (offset * 60 * 1000));
+    return localDate.toISOString().split('T')[0];
   };
   const [today] = useState(getTodayString());
   const [from, setFrom] = useState(today);
@@ -47,10 +47,7 @@ const StockReport = ({ filters }: ReportProps) => {
   const [loading, setLoading] = useState(false);
 
   const [selectionOpen, setSelectionOpen] = useState(false);
-
-  // State for the Detailed Report Dialog
   const [detailsOpen, setDetailsOpen] = useState(false);
-
   const [selectedRow, setSelectedRow] = useState<any | null>(null);
   const [detailType, setDetailType] = useState<DetailType>(null);
 
@@ -114,23 +111,19 @@ const StockReport = ({ filters }: ReportProps) => {
     if (from && to) fetchReport(false);
   }, [from, to]);
 
-  // 1. Opens the Menu Dialog (Row Click)
   const openSelectionMenu = (row: any) => {
     setSelectedRow(row);
     setSelectionOpen(true);
   };
 
-  // 2. Selects a type from Menu and opens Detail Dialog
   const selectReportType = (type: DetailType) => {
     setSelectionOpen(false);
-    // Short delay to allow first dialog to close smoothly before opening next
     setTimeout(() => {
       setDetailType(type);
       setDetailsOpen(true);
     }, 150);
   };
 
-  // 3. Back function: Close Details, Open Selection
   const goBackToSelection = () => {
     setDetailsOpen(false);
     setTimeout(() => {
@@ -147,7 +140,6 @@ const StockReport = ({ filters }: ReportProps) => {
     }, 300);
   };
 
-  // Helper functions
   const normalizeTransfers = (row: any) => {
     if (!row) return [];
     const transfers = row.transferDetails || row.transferLogs || [];
@@ -170,43 +162,49 @@ const StockReport = ({ filters }: ReportProps) => {
     <>
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <CardTitle className="text-xl shrink-0">
               Stock Report
-              <span className="ml-2 text-sm text-muted-foreground">
+              <span className="ml-2 text-sm text-muted-foreground font-normal block sm:inline">
                 ({from === to ? 'Today' : `${from} → ${to}`})
               </span>
             </CardTitle>
 
-            <div className="flex items-end gap-2">
-              <div>
-                <label className="text-sm text-muted-foreground">From</label>
-                <Input
-                  type="date"
-                  value={from}
-                  max={to || undefined}
-                  onChange={(e) => setFrom(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground">To</label>
-                <Input
-                  type="date"
-                  value={to}
-                  max={today || undefined}
-                  min={from || undefined}
-                  onChange={(e) => setTo(e.target.value)}
-                />
+            {/* Flexible Filter Container */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2 w-full lg:w-auto">
+              <div className="grid grid-cols-2 gap-2 flex-1">
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">From</label>
+                  <Input
+                    type="date"
+                    value={from}
+                    max={to || undefined}
+                    onChange={(e) => setFrom(e.target.value)}
+                    className="w-full text-xs sm:text-sm h-9"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">To</label>
+                  <Input
+                    type="date"
+                    value={to}
+                    max={today || undefined}
+                    min={from || undefined}
+                    onChange={(e) => setTo(e.target.value)}
+                    className="w-full text-xs sm:text-sm h-9"
+                  />
+                </div>
               </div>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2">
-                    <Eye className="w-4 h-4" /> Columns
+                  <Button variant="outline" className="h-9 px-3 gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                    <Eye className="w-4 h-4" /> 
+                    <span className="inline">Columns</span>
                   </Button>
                 </DropdownMenuTrigger>
 
-                <DropdownMenuContent className="w-56">
+                <DropdownMenuContent className="w-56" align="end">
                   <DropdownMenuCheckboxItem
                     checked={visibleColumns.length === optionalColumns.length}
                     onCheckedChange={(checked) =>
@@ -245,29 +243,30 @@ const StockReport = ({ filters }: ReportProps) => {
 
         <CardContent>
           {loading ? (
-            <p>Loading report...</p>
+            <p className="py-8 text-center text-muted-foreground">Loading report...</p>
           ) : data.length === 0 ? (
             <p className="py-8 text-center text-muted-foreground">
               No report data available for the selected period.
             </p>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto relative">
               <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr className="border-b bg-muted">
-                    <th className="p-2 text-left">Item Name</th>
+                  <tr className="border-b bg-muted whitespace-nowrap">
+                    {/* Removed sticky positioning as requested */}
+                    <th className="p-2 text-left min-w-[150px]">Item Name</th>
 
                     {optionalColumns.map(
                       (col) =>
                         visibleColumns.includes(col.key) && (
-                          <th className="p-2 text-right" key={col.key}>
+                          <th className="p-2 text-right min-w-[80px]" key={col.key}>
                             {col.label}
                           </th>
                         )
                     )}
 
                     {mandatoryColumns.map((col) => (
-                      <th className="p-2 text-right" key={col.key}>
+                      <th className="p-2 text-right min-w-[80px]" key={col.key}>
                         {col.label}
                       </th>
                     ))}
@@ -279,11 +278,12 @@ const StockReport = ({ filters }: ReportProps) => {
                     <tr
                       key={r.itemId}
                       className={`
-                        border-b cursor-pointer transition-colors 
+                        border-b cursor-pointer transition-colors whitespace-nowrap
                         ${r.shortage > 0 ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-muted/50'}
                       `}
                       onClick={() => openSelectionMenu(r)}
                     >
+                      {/* Removed sticky positioning as requested */}
                       <td className="p-2 font-medium flex items-center gap-2">
                         {r.name}
                       </td>
@@ -323,9 +323,8 @@ const StockReport = ({ filters }: ReportProps) => {
         </CardContent>
       </Card>
 
-      {/* 1. SELECTION MENU DIALOG */}
       <Dialog open={selectionOpen} onOpenChange={setSelectionOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Reports for {selectedRow?.name}</DialogTitle>
             <DialogDescription>Select which transaction details you want to view.</DialogDescription>
@@ -394,15 +393,14 @@ const StockReport = ({ filters }: ReportProps) => {
         </DialogContent>
       </Dialog>
 
-      {/* 2. DETAILS DIALOG */}
       <Dialog open={detailsOpen} onOpenChange={closeDetails}>
-        <DialogContent className="sm:max-w-[650px]">
+        <DialogContent className="sm:max-w-[650px] max-h-[90vh] flex flex-col">
           <DialogHeader>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2" onClick={goBackToSelection}>
                 <ArrowLeft className="w-4 h-4" />
               </Button>
-              <DialogTitle>
+              <DialogTitle className="truncate pr-4">
                 {selectedRow?.name} —
                 {detailType === 'damage' && ' Damage Report'}
                 {detailType === 'return' && ' Vendor Returns'}
@@ -411,12 +409,11 @@ const StockReport = ({ filters }: ReportProps) => {
             </div>
           </DialogHeader>
 
-          <div className="mt-4">
-            {/* DAMAGE DETAILS VIEW */}
+          <div className="mt-4 flex-1 overflow-y-auto">
             {detailType === 'damage' && (
               <>
                 {getDamageDetails(selectedRow).length > 0 ? (
-                  <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                  <div className="space-y-3 pr-2">
                     {getDamageDetails(selectedRow).map((d: any, i: number) => (
                       <div key={i} className="border rounded-md p-3 bg-red-50 border-red-200">
                         <div className="flex justify-between">
@@ -438,11 +435,10 @@ const StockReport = ({ filters }: ReportProps) => {
               </>
             )}
 
-            {/* RETURN DETAILS VIEW */}
             {detailType === 'return' && (
               <>
                 {getReturnDetails(selectedRow).length > 0 ? (
-                  <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                  <div className="space-y-3 pr-2">
                     {getReturnDetails(selectedRow).map((d: any, i: number) => (
                       <div key={i} className="border rounded-md p-3 bg-orange-50 border-orange-200">
                         <div className="flex justify-between">
@@ -464,11 +460,10 @@ const StockReport = ({ filters }: ReportProps) => {
               </>
             )}
 
-            {/* TRANSFER DETAILS VIEW */}
             {detailType === 'transfer' && (
               <>
                 {normalizeTransfers(selectedRow).length > 0 ? (
-                  <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                  <div className="space-y-3 pr-2">
                     {normalizeTransfers(selectedRow).map((t: any, i: number) => (
                       <div key={i} className="border rounded-md p-3 bg-blue-50 border-blue-200">
                         <div className="flex justify-between">
@@ -481,11 +476,11 @@ const StockReport = ({ filters }: ReportProps) => {
                         <div className="text-sm mt-2 grid grid-cols-2 gap-2">
                           <div>
                             <span className="text-xs text-muted-foreground block">From</span>
-                            <span className="font-medium">{t.fromHotel ? `${t.fromHotel} / ` : ''}{t.fromDept || 'Unknown'}</span>
+                            <span className="font-medium truncate block">{t.fromHotel ? `${t.fromHotel} / ` : ''}{t.fromDept || 'Unknown'}</span>
                           </div>
                           <div>
                             <span className="text-xs text-muted-foreground block">To</span>
-                            <span className="font-medium">{t.toHotel ? `${t.toHotel} / ` : ''}{t.toDept || 'Unknown'}</span>
+                            <span className="font-medium truncate block">{t.toHotel ? `${t.toHotel} / ` : ''}{t.toDept || 'Unknown'}</span>
                           </div>
                         </div>
 

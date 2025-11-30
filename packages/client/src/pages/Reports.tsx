@@ -1,20 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '../components/ui/select';
 import ReorderReport from './ReorderReport';
 import ItemReport from './ItemReport';
 import StockReport from './StockReport';
 import { toast } from 'sonner';
-import apiClient from '@/api/axios';
-import { useAuth } from '@/context/AuthContext';
-import { UserRole } from '@hotel-inventory/shared';
+import apiClient from '../api/axios';
+import { useAuth } from '../context/AuthContext';
+import { UserRole } from '../../../shared/src';
 
 const Reports = () => {
   const { user, accessToken, selectedHotelId } = useAuth();
@@ -87,9 +87,9 @@ const Reports = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Reports</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Reports</h1>
           <p className="text-muted-foreground mt-1">
             View and export inventory reports
           </p>
@@ -99,7 +99,7 @@ const Reports = () => {
           onValueChange={setSelectedDepartment}
           disabled={departments.length === 0}
         >
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full sm:w-[200px]">
             <SelectValue placeholder="Select Department" />
           </SelectTrigger>
           <SelectContent>
@@ -112,11 +112,11 @@ const Reports = () => {
         </Select>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="stock">Stock Report</TabsTrigger>
-          <TabsTrigger value="item">Item Report</TabsTrigger>
-          <TabsTrigger value="reorder">Reorder Report</TabsTrigger>
+          <TabsTrigger value="stock" className="text-xs sm:text-sm">Stock</TabsTrigger>
+          <TabsTrigger value="item" className="text-xs sm:text-sm">Item</TabsTrigger>
+          <TabsTrigger value="reorder" className="text-xs sm:text-sm">Reorder</TabsTrigger>
         </TabsList>
 
         <TabsContent value="stock">

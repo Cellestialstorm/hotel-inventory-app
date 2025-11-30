@@ -127,18 +127,18 @@ const Inventory = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
-          <p className="text-muted-foreground mt-1">Items for your hotel/department</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Inventory</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">Items for your hotel/department</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
           <Select
             value={selectedDepartment}
             onValueChange={setSelectedDepartment}
           >
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="Select Department" />
             </SelectTrigger>
             <SelectContent>
@@ -151,7 +151,7 @@ const Inventory = () => {
             </SelectContent>
           </Select>
 
-          <Button className="gap-2" onClick={onAdd}>
+          <Button className="gap-2 w-full sm:w-auto" onClick={onAdd}>
             <Plus className="w-4 h-4" /> Add Item
           </Button>
         </div>
@@ -169,7 +169,7 @@ const Inventory = () => {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b">
+                  <tr className="border-b whitespace-nowrap">
                     <th className="py-3 px-4 text-left">Item Name</th>
                     <th className="py-3 px-4 text-left">Department</th>
                     <th className="py-3 px-4 text-right">Current Stock</th>
@@ -182,12 +182,12 @@ const Inventory = () => {
                   {filtered.map(it => {
                     const shortage = Math.max(0, (it.minStock || 0) - (it.currentStock || 0));
                     return (
-                      <tr key={it._id} className="border-b hover:bg-muted/50">
-                        <td className="py-3 px-4">{it.name}</td>
+                      <tr key={it._id} className="border-b hover:bg-muted/50 whitespace-nowrap">
+                        <td className="py-3 px-4 font-medium">{it.name}</td>
                         <td className="py-3 px-4">{it.departmentId?.name || '-'}</td>
                         <td className="py-3 px-4 text-right">{it.currentStock}</td>
                         <td className="py-3 px-4 text-right">{it.minStock}</td>
-                        <td className="py-3 px-4 text-right">{shortage}</td>
+                        <td className={`py-3 px-4 text-right ${shortage > 0 ? 'text-danger font-bold' : ''}`}>{shortage}</td>
                         <td className="py-3 px-4 text-center">
                           <div className="flex items-center justify-center gap-2">
                             {user?.role === 'ADMIN' && (
@@ -195,13 +195,13 @@ const Inventory = () => {
                                 <Edit className="w-4 h-4" />
                               </Button>
                             )}
-                            <Button size="icon" variant="ghost" onClick={() => onDamage(it)}>
+                            <Button size="icon" variant="ghost" onClick={() => onDamage(it)} title="Damage">
                               <Package className="w-4 h-4" />
                             </Button>
-                            <Button size="icon" variant="ghost" onClick={() => onTransfer(it)}>
+                            <Button size="icon" variant="ghost" onClick={() => onTransfer(it)} title="Transfer">
                               <ArrowRightLeft className="w-4 h-4" />
                             </Button>
-                            <Button size="icon" variant="ghost" onClick={() => onReturn(it)}>
+                            <Button size="icon" variant="ghost" onClick={() => onReturn(it)} title="Return">
                               <Undo2 className="w-4 h-4" />
                             </Button>
                             

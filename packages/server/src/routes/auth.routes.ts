@@ -17,8 +17,6 @@ router.post('/logout', AuthController.logout);
 // Admin-only user registration
 router.post('/register', authenticateToken, checkAdminOnly, AuthController.register);
 
-// Routes requiring authentication
-router.put('/change-password', authenticateToken, AuthController.changePassword);
 router.get('/me', authenticateToken, AuthController.getCurrentUser);
 
 export default router;

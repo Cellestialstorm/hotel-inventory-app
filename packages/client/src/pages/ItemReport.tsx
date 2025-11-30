@@ -34,9 +34,9 @@ const ItemReport = ({ filters }: ItemProps) => {
 
   const getTodayString = () => {
     const d = new Date();
-    const offset = d.getTimezoneOffset(); // Gets offset in minutes
-    const localDate = new Date(d.getTime() - (offset * 60 * 1000)); // Adjusts time
-    return localDate.toISOString().split('T')[0]; // Now returns correct local date
+    const offset = d.getTimezoneOffset();
+    const localDate = new Date(d.getTime() - (offset * 60 * 1000));
+    return localDate.toISOString().split('T')[0];
   };
   const [today] = useState(getTodayString());
   const [from, setFrom] = useState(today);
@@ -129,34 +129,35 @@ const ItemReport = ({ filters }: ItemProps) => {
     }
   };
 
-  // re-fetch when item or date changes
   useEffect(() => {
     if (selectedItem) fetchReport();
   }, [selectedItem, from, to]);
 
-  
-
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>
-            Item Report
-            <span className="text-sm text-muted-foreground ml-2">
-              ({from === to ? 'Today' : `${from} → ${to}`})
-            </span>
-          </CardTitle>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl">
+              Item Report
+              <span className="text-sm text-muted-foreground ml-2 font-normal block sm:inline">
+                ({from === to ? 'Today' : `${from} → ${to}`})
+              </span>
+            </CardTitle>
+          </div>
 
-          <div className="flex gap-2 items-end">
-            {/* Item Selector */}
-            <div>
-              <label className="text-sm text-muted-foreground">Item</label>
+          {/* Flexible Filter Container */}
+          <div className="flex flex-col sm:flex-row gap-4 items-end justify-between w-full">
+            
+            {/* Item Selector (Left) */}
+            <div className="w-full sm:w-auto sm:min-w-[240px] sm:max-w-[300px]">
+              <label className="text-xs text-muted-foreground block mb-1.5 ml-1">Item</label>
               <Select
                 value={selectedItem}
                 onValueChange={setSelectedItem}
                 disabled={items.length === 0 || loading}
               >
-                <SelectTrigger className="w-[220px]">
+                <SelectTrigger className="w-full h-9">
                   {loading ? (
                     <span>Loading items...</span>
                   ) : (
@@ -173,74 +174,79 @@ const ItemReport = ({ filters }: ItemProps) => {
               </Select>
             </div>
 
-            {/* Date Range */}
-            <div>
-              <label className="text-sm text-muted-foreground">From</label>
-              <Input
-                type="date"
-                value={from}
-                max={to || undefined}
-                onChange={(e) => setFrom(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground">To</label>
-              <Input
-                type="date"
-                value={to}
-                max={today || undefined}
-                min={from || undefined}
-                onChange={(e) => setTo(e.target.value)}
-              />
-            </div>
+            {/* Date & Columns (Right) */}
+            <div className="flex flex-col sm:flex-row gap-3 items-end w-full sm:w-auto">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="w-full sm:w-[140px]">
+                  <label className="text-xs text-muted-foreground block mb-1.5 ml-1">From</label>
+                  <Input
+                    type="date"
+                    value={from}
+                    max={to || undefined}
+                    onChange={(e) => setFrom(e.target.value)}
+                    className="w-full h-9 text-sm"
+                  />
+                </div>
+                <div className="w-full sm:w-[140px]">
+                  <label className="text-xs text-muted-foreground block mb-1.5 ml-1">To</label>
+                  <Input
+                    type="date"
+                    value={to}
+                    max={today || undefined}
+                    min={from || undefined}
+                    onChange={(e) => setTo(e.target.value)}
+                    className="w-full h-9 text-sm"
+                  />
+                </div>
+              </div>
 
-            {/* Columns Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <Eye className="w-4 h-4" /> Columns
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56">
-                <DropdownMenuCheckboxItem
-                  checked={visibleColumns.length === optionalColumns.length}
-                  onCheckedChange={(checked) =>
-                    setVisibleColumns(
-                      checked ? optionalColumns.map((c) => c.key) : []
-                    )
-                  }
-                >
-                  {visibleColumns.length === optionalColumns.length
-                    ? 'Hide All'
-                    : 'Show All'}
-                </DropdownMenuCheckboxItem>
-
-                <DropdownMenuSeparator />
-
-                {optionalColumns.map((col) => (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="h-9 gap-2 w-full sm:w-auto">
+                    <Eye className="w-4 h-4" /> <span className="inline">Columns</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end">
                   <DropdownMenuCheckboxItem
-                    key={col.key}
-                    checked={visibleColumns.includes(col.key)}
-                    onCheckedChange={(checked) => {
-                      setVisibleColumns((prev) =>
-                        checked
-                          ? [...prev, col.key]
-                          : prev.filter((k) => k !== col.key)
-                      );
-                    }}
+                    checked={visibleColumns.length === optionalColumns.length}
+                    onCheckedChange={(checked) =>
+                      setVisibleColumns(
+                        checked ? optionalColumns.map((c) => c.key) : []
+                      )
+                    }
                   >
-                    {col.label}
+                    {visibleColumns.length === optionalColumns.length
+                      ? 'Hide All'
+                      : 'Show All'}
                   </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+
+                  <DropdownMenuSeparator />
+
+                  {optionalColumns.map((col) => (
+                    <DropdownMenuCheckboxItem
+                      key={col.key}
+                      checked={visibleColumns.includes(col.key)}
+                      onCheckedChange={(checked) => {
+                        setVisibleColumns((prev) =>
+                          checked
+                            ? [...prev, col.key]
+                            : prev.filter((k) => k !== col.key)
+                        );
+                      }}
+                    >
+                      {col.label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </CardHeader>
 
       <CardContent>
         {reportsLoading ? (
-          <p>Loading report...</p>
+          <p className="py-8 text-center text-muted-foreground">Loading report...</p>
         ) : data.length === 0 ? (
           <p className="text-muted-foreground py-8 text-center">
             No report data available for the selected item or department.
@@ -249,18 +255,18 @@ const ItemReport = ({ filters }: ItemProps) => {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b bg-muted">
-                  <th className="p-2 text-left">Date</th>
+                <tr className="border-b bg-muted whitespace-nowrap">
+                  <th className="p-2 text-left min-w-[100px]">Date</th>
                   {optionalColumns.map(
                     (col) =>
                       visibleColumns.includes(col.key) && (
-                        <th key={col.key} className="p-2 text-right">
+                        <th key={col.key} className="p-2 text-right min-w-[80px]">
                           {col.label}
                         </th>
                       )
                   )}
                   {mandatoryColumns.map((col) => (
-                    <th key={col.key} className="p-2 text-right">
+                    <th key={col.key} className="p-2 text-right min-w-[80px]">
                       {col.label}
                     </th>
                   ))}
@@ -270,7 +276,7 @@ const ItemReport = ({ filters }: ItemProps) => {
                 {data.map((row, idx) => (
                   <tr key={idx} 
                     className={`
-                      border-b cursor-pointer
+                      border-b cursor-pointer whitespace-nowrap
                       ${row.shortage > 0 ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-muted/50'}
                     `}
                   >

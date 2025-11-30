@@ -65,26 +65,6 @@ const refreshToken = asyncHandler(async (req: Request, res: Response, _next: Nex
 });
 
 /**
- * Handles changing the current user's password. Requires authentication.
- * @route PUT /api/auth/change-password
- */
-const changePassword = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
-    const { oldPassword, newPassword } = req.body;
-    const userId = (req as any).user?.userId; // Assumes authenticateToken middleware ran successfully
-
-    if (!userId) {
-        throw new ApiError(401, 'User not authenticated', 'UNAUTHENTICATED');
-    }
-    if (!oldPassword || !newPassword) {
-        throw new ApiError(400, 'Old password and new password are required', 'VALIDATION_ERROR');
-    }
-
-    await AuthService.changePassword(userId, oldPassword, newPassword);
-
-    res.status(200).json(new ApiResponse(200, null, 'Password changed successfully'));
-});
-
-/**
  * Gets the details of the currently authenticated user. Requires authentication.
  * @route GET /api/auth/me
  */
@@ -122,7 +102,6 @@ export const AuthController = {
     login,
     logout,
     refreshToken,
-    changePassword,
     getCurrentUser,
     register
 };

@@ -4,6 +4,7 @@ import { IUSER } from '@hotel-inventory/shared';
 import Hotel from '@/models/Hotel.model';
 import Department from '@/models/Department.model';
 import ApiError from '@/utils/ApiError';
+import { hashPassword } from '@/utils/bcrypt.util';
 import logger from '@/utils/logger';
 import { IUpdateUserRequest, UserRole, IClientUser } from '@hotel-inventory/shared';
 /**
@@ -54,27 +55,44 @@ const updateUser = async (
     userId: string,
     updateData: IUpdateUserRequest
 ) : Promise<IClientUser> => {
+    // 1. Separate password from other data
     const { password, ...validUpdateData } = updateData;
+    
+    // 2. Initialize the actual update payload
+    const updatePayload: any = { ...validUpdateData };
+
+    // 3. Handle Password Update Logic
+    if (password && password.trim().length > 0) {
+        if (password.length < 6) {
+            throw new ApiError(400, 'Password must be at least 6 characters long', 'VALIDATION_ERROR');
+        }
+        updatePayload.password = await hashPassword(password);
+    }
+
     if (validUpdateData.username) {
         const existingUser = await User.findOne({ username: validUpdateData.username.toLowerCase(), userId: { $ne: userId } }).lean();
         if (existingUser) {
             throw new ApiError(409, `Username '${validUpdateData.username}' is already taken.`, 'DUPLICATE_USERNAME');
         }
-        validUpdateData.username = validUpdateData.username.toLowerCase();
+        updatePayload.username = validUpdateData.username.toLowerCase();
     }
 
-    if (validUpdateData.assignedHotelId && !mongoose.Types.ObjectId.isValid(validUpdateData.assignedHotelId) || !(await Hotel.findById(validUpdateData.assignedHotelId))) {
-        throw new ApiError(404, `Hotel with ID ${validUpdateData.assignedHotelId} not found`, 'HOTEL_NOT_FOUND');
+    if (validUpdateData.assignedHotelId) {
+        if (!mongoose.Types.ObjectId.isValid(validUpdateData.assignedHotelId) || !(await Hotel.findById(validUpdateData.assignedHotelId))) {
+            throw new ApiError(404, `Hotel with ID ${validUpdateData.assignedHotelId} not found`, 'HOTEL_NOT_FOUND');
+        }
     }
 
-    if (validUpdateData.assignedDepartmentId && !mongoose.Types.ObjectId.isValid(validUpdateData.assignedDepartmentId) || !(await Department.findById(validUpdateData.assignedDepartmentId))) {
-        throw new ApiError(404, `Department with ID ${validUpdateData.assignedDepartmentId} not found`, 'DEPARTMENT_NOT_FOUND');
+    if (validUpdateData.assignedDepartmentId) {
+        if (!mongoose.Types.ObjectId.isValid(validUpdateData.assignedDepartmentId) || !(await Department.findById(validUpdateData.assignedDepartmentId))) {
+            throw new ApiError(404, `Department with ID ${validUpdateData.assignedDepartmentId} not found`, 'DEPARTMENT_NOT_FOUND');
+        }
     }
 
     try {
         const updatedUser = await User.findOneAndUpdate(
             { userId: userId },
-            { $set: validUpdateData },
+            { $set: updatePayload }, // Use the constructed payload including hashed password
             { new: true, runValidators: true, context: 'query' }
         ).lean();
 
@@ -82,8 +100,11 @@ const updateUser = async (
             throw new ApiError(404, `User with ID ${userId} not found`, 'USER_NOT_FOUND');
         }
 
+        // Ensure password is not returned
+        const { password: _, ...userWithoutPassword } = updatedUser as any;
+
         logger.info(`User updated successfully: ${updatedUser.username} (ID: ${userId})`);
-        return updatedUser as IClientUser;
+        return userWithoutPassword as IClientUser;
     } catch (error: any) {
         logger.error(`Error updating user ${userId}: ${error.message}`, { error });
         if (error.code === 11000 || (error.name === 'MongoServerError' && error.message.includes('duplicate key'))) {

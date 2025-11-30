@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Plus, Search, Edit, Trash2 } from 'lucide-react';
-import { IUSER, IHotel, IDepartment } from '@hotel-inventory/shared';
-import UserModal from '@/components/UserModal';
-import DepartmentModal from '@/components/DepartmentModal';
-import HotelModal from '@/components/HotelModal';
-import DeleteConfirmDialog from '@/components/DeleteConfirmDialog';
+import { IUSER, IHotel, IDepartment } from '../../../shared/src';
+import UserModal from '../components/UserModal';
+import DepartmentModal from '../components/DepartmentModal';
+import HotelModal from '../components/HotelModal';
+import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import { toast } from 'sonner';
-import { useAuth } from '@/context/AuthContext';
-import apiClient from '@/api/axios';
+import { useAuth } from '../context/AuthContext';
+import apiClient from '../api/axios';
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState('users');
@@ -23,17 +23,23 @@ const Admin = () => {
   const [departments, setDepartments] = useState<IDepartment[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState<IDepartment | null>(null);
   const [departmentModalOpen, setDepartmentModalOpen] = useState(false);
+  
+  // Search terms
   const [searchTerm, setSearchTerm] = useState({
     users: '',
     hotels: '',
     departments: '',
   });
+
+  // Filter states
+  const [filterHotel, setFilterHotel] = useState<string>('');
+  const [filterDept, setFilterDept] = useState<string>('all');
+
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<IUSER | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteType, setDeleteType] = useState<'user' | 'department' | 'hotel' | null>(null);
-
 
   useEffect(() => {
     loadData();
@@ -70,6 +76,18 @@ const Admin = () => {
       toast.error(msg);
     }
   };
+
+  // Set initial hotel filter when hotels load
+  useEffect(() => {
+    if (hotels.length > 0 && !filterHotel) {
+      setFilterHotel(hotels[0]._id);
+    }
+  }, [hotels, filterHotel]);
+
+  // Reset filters when tab changes
+  useEffect(() => {
+    setFilterDept('all');
+  }, [activeTab]);
 
   const handleAddUser = () => {
     setSelectedUser(null);
@@ -128,13 +146,10 @@ const Admin = () => {
   };
 
   const confirmDelete = async () => {
-    
     setDeleteLoading(true);
-
     try {
       if (!accessToken) {
         toast.error('Authentication token not found.');
-        setDeleteLoading(false);
         return;
       }
 
@@ -174,59 +189,84 @@ const Admin = () => {
      }
   };
 
-  const getHotelName = (hotelId?: string) => {
+  const getHotelName = (hotelId?: string | any) => {
     if (!hotelId) return '-';
-    const hotel = hotels.find(h => h._id === hotelId || h.hotelId === hotelId);
+    const id = typeof hotelId === 'object' ? hotelId._id : hotelId;
+    const hotel = hotels.find(h => h._id === id || h.hotelId === id);
     return hotel?.name || '-';
   };
 
-  const getDepartmentName = (departmentId?: string) => {
+  const getDepartmentName = (departmentId?: string | any) => {
     if (!departmentId) return '-';
-    const dept = departments.find(d => d._id === departmentId || d.departmentId === departmentId);
+    const id = typeof departmentId === 'object' ? departmentId._id : departmentId;
+    const dept = departments.find(d => d._id === id || d.departmentId === id);
     return dept?.name || '-';
   };
 
-  const filteredUsers = users.filter(user =>
-    user.username.toLowerCase().includes(searchTerm.users.toLowerCase())
-  );
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.username.toLowerCase().includes(searchTerm.users.toLowerCase());
+    
+    const userHotelId = typeof user.assignedHotelId === 'object' ? (user.assignedHotelId as any)._id : user.assignedHotelId;
+    const matchesHotel = filterHotel ? userHotelId === filterHotel : true;
 
-  const filteredDepartments = departments.filter(dept =>
-    dept.name.toLowerCase().includes(searchTerm.departments.toLowerCase()) ||
-    getHotelName(dept.hotelId).toLowerCase().includes(searchTerm.departments.toLowerCase())
-  );
+    const userDeptId = typeof user.assignedDepartmentId === 'object' ? (user.assignedDepartmentId as any)._id : user.assignedDepartmentId;
+    const matchesDept = filterDept && filterDept !== 'all' ? userDeptId === filterDept : true;
+
+    return matchesSearch && matchesHotel && matchesDept;
+  });
+
+  const filteredDepartments = departments.filter(dept => {
+    const matchesSearch = dept.name.toLowerCase().includes(searchTerm.departments.toLowerCase()) ||
+    getHotelName(dept.hotelId).toLowerCase().includes(searchTerm.departments.toLowerCase());
+    
+    const deptHotelId = typeof dept.hotelId === 'object' ? (dept.hotelId as any)._id : dept.hotelId;
+    const matchesHotel = filterHotel ? deptHotelId === filterHotel : true;
+    
+    return matchesSearch && matchesHotel;
+  });
 
   const filteredHotels = hotels.filter(hotel =>
     hotel.name.toLowerCase().includes(searchTerm.hotels.toLowerCase())
   );
 
+  // Helper to get departments for specific hotel filter
+  const getFilteredDeptsForSelect = () => {
+    if (!filterHotel) return departments;
+    return departments.filter(d => {
+        const hId = typeof d.hotelId === 'object' ? (d.hotelId as any)._id : d.hotelId;
+        return hId === filterHotel;
+    });
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Admin Panel</h1>
-          <p className="text-muted-foreground mt-1">Manage users, hotels, and departments</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Admin Panel</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">Manage users, hotels, and departments</p>
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="hotels">Hotels</TabsTrigger>
-          <TabsTrigger value="departments">Departments</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        {/* Evenly spread tabs as requested */}
+        <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="hotels">Hotels</TabsTrigger>
+            <TabsTrigger value="departments">Departments</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="users" className="space-y-4">
+        <TabsContent value="users" className="space-y-4 mt-0">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle>User Management</CardTitle>
-              <Button className="gap-2" onClick={handleAddUser}>
+              <Button className="gap-2" size="sm" onClick={handleAddUser}>
                 <Plus className="w-4 h-4" />
-                Add User
+                <span className="hidden sm:inline">Add User</span>
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="mb-4">
-                <div className="relative">
+              <div className="flex flex-col md:flex-row gap-3 mb-6">
+                <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     placeholder="Search users..."
@@ -235,37 +275,48 @@ const Admin = () => {
                     className="pl-10"
                   />
                 </div>
+                
+                <Select value={filterHotel || (hotels.length > 0 ? hotels[0]._id : '')} onValueChange={(v) => { setFilterHotel(v); setFilterDept('all'); }}>
+                  <SelectTrigger className="w-full md:w-[200px]">
+                    <SelectValue placeholder="Select Hotel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {hotels.map(h => <SelectItem key={h._id} value={h._id}>{h.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+
+                <Select value={filterDept} onValueChange={setFilterDept} disabled={!filterHotel}>
+                   <SelectTrigger className="w-full md:w-[200px]">
+                    <SelectValue placeholder="All Departments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {getFilteredDeptsForSelect().map(d => <SelectItem key={d._id} value={d._id}>{d.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full whitespace-nowrap text-sm">
                   <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-4 text-sm font-medium">Username</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Role</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Hotel</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Department</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">Status</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">Actions</th>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left p-3 font-medium min-w-[120px]">Username</th>
+                      <th className="text-left p-3 font-medium min-w-[150px] md:w-1/4">Hotel</th>
+                      <th className="text-left p-3 font-medium min-w-[150px] md:w-1/4">Department</th>
+                      <th className="text-center p-3 font-medium min-w-[100px]">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredUsers.map((user) => (
                       <tr key={user._id} className="border-b hover:bg-muted/50 transition-colors">
-                        <td className="py-3 px-4 text-sm font-medium">{user.username}</td>
-                        <td className="py-3 px-4">
-                          <Badge variant='default'>
-                            {user.role}
-                          </Badge>
+                        <td className="p-3 font-medium">{user.username}</td>
+                        <td className="p-3 truncate max-w-[150px] md:max-w-xs" title={getHotelName(user.assignedHotelId)}>
+                          {getHotelName(user.assignedHotelId)}
                         </td>
-                        <td className="py-3 px-4 text-sm">{getHotelName(user.assignedHotelId?.toString() || '')}</td>
-                        <td className="py-3 px-4 text-sm">{getDepartmentName(user.assignedDepartmentId?.toString() || '')}</td>
-                        <td className="py-3 px-4 text-center">
-                          <Badge variant={user.isActive ? 'default' : 'secondary'}>
-                            {user.isActive ? 'Active' : 'Inactive'}
-                          </Badge>
+                        <td className="p-3 truncate max-w-[150px] md:max-w-xs" title={getDepartmentName(user.assignedDepartmentId)}>
+                          {getDepartmentName(user.assignedDepartmentId)}
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="p-3 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <Button 
                               size="icon" 
@@ -294,17 +345,17 @@ const Admin = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="hotels" className="space-y-4">
+        <TabsContent value="hotels" className="space-y-4 mt-0">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Hotel Management</CardTitle>
-              <Button className="gap-2" onClick={handleAddHotel}>
+              <Button className="gap-2" size="sm" onClick={handleAddHotel}>
                 <Plus className="w-4 h-4" />
-                Add Hotel
+                <span className="hidden sm:inline">Add Hotel</span>
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="mb-4">
+              <div className="mb-6">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
@@ -317,28 +368,34 @@ const Admin = () => {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full whitespace-nowrap text-sm">
                   <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-4 text-sm font-medium">Hotel Name</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Location</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Total Departments</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">Actions</th>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left p-3 font-medium min-w-[150px]">Hotel Name</th>
+                      <th className="text-left p-3 font-medium min-w-[150px]">Location</th>
+                      <th className="text-left p-3 font-medium min-w-[120px]">Total Departments</th>
+                      <th className="text-center p-3 font-medium min-w-[100px]">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredHotels.map((hotel) => {
 
                       const deptCount = departments.filter(
-                        (dept) => dept.hotelId === hotel._id || dept.hotelId === hotel.hotelId
+                        (dept) => {
+                          const hId = typeofQHId(dept.hotelId);
+                          return hId === hotel._id;
+                        }
                       ).length;
+                      
+                      // Helper to avoid complex expression in filter
+                      function typeofQHId(id: any) { return typeof id === 'object' ? id._id : id; }
 
                       return (
                       <tr key={hotel._id} className="border-b hover:bg-muted/50 transition-colors">
-                        <td className="py-3 px-4 text-sm font-medium">{hotel.name}</td>
-                        <td className="py-3 px-4 text-sm">{hotel.location}</td>
-                        <td className="py-3 px-4 text-sm">{deptCount}</td>
-                        <td className="py-3 px-4">
+                        <td className="p-3 font-medium">{hotel.name}</td>
+                        <td className="p-3">{hotel.location}</td>
+                        <td className="p-3">{deptCount}</td>
+                        <td className="p-3 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <Button 
                               size="icon" 
@@ -368,18 +425,18 @@ const Admin = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="departments" className="space-y-4">
+        <TabsContent value="departments" className="space-y-4 mt-0">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Department Management</CardTitle>
-              <Button className="gap-2" onClick={handleAddDepartment}>
+              <Button className="gap-2" size="sm" onClick={handleAddDepartment}>
                 <Plus className="w-4 h-4" />
-                Add Department
+                <span className="hidden sm:inline">Add Department</span>
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="mb-4">
-                <div className="relative">
+              <div className="flex flex-col md:flex-row gap-3 mb-6">
+                <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     placeholder="Search departments..."
@@ -388,15 +445,23 @@ const Admin = () => {
                     className="pl-10"
                   />
                 </div>
+                <Select value={filterHotel || (hotels.length > 0 ? hotels[0]._id : '')} onValueChange={setFilterHotel}>
+                  <SelectTrigger className="w-full md:w-[250px]">
+                    <SelectValue placeholder="Select Hotel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {hotels.map(h => <SelectItem key={h._id} value={h._id}>{h.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full whitespace-nowrap text-sm">
                   <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-4 text-sm font-medium">Department Name</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Hotel Name</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium">Actions</th>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left p-3 font-medium min-w-[150px]">Department Name</th>
+                      <th className="text-left p-3 font-medium min-w-[150px]">Hotel Name</th>
+                      <th className="text-center p-3 font-medium min-w-[100px]">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -404,9 +469,9 @@ const Admin = () => {
                       const hotelName = getHotelName(department.hotelId)
                       return (
                       <tr key={department._id} className="border-b hover:bg-muted/50 transition-colors">
-                        <td className="py-3 px-4 text-sm font-medium">{department.name}</td>
-                        <td className="py-3 px-4 text-sm">{hotelName}</td>
-                        <td className="py-3 px-4">
+                        <td className="p-3 font-medium">{department.name}</td>
+                        <td className="p-3">{hotelName}</td>
+                        <td className="p-3 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <Button 
                               size="icon" 

@@ -173,51 +173,11 @@ const refreshToken = async (refreshToken: string): Promise<{ accessToken: string
     }
 };
 
-/**
- * Change a user's password.
- * @param userId The ID of the user changing the password.
- * @param oldPassword The old password.
- * @param newPassword The new password.
- */
 
-const changePassword = async (userId: string, oldPassword: string, newPassword: string): Promise<void> => {
-    if (!userId || !oldPassword || !newPassword) {
-        throw new ApiError(400, 'User ID, old password, and new password are required', 'VALIDATION_ERROR');
-    }
-
-    if (newPassword.length < 6) {
-        throw new ApiError(400, 'New password must be at least 6 characters long', 'VALIDATION_ERROR');
-    }
-
-    const user = await User.findOne( { userId: userId } ).select('+password');
-
-    if (!user) {
-        logger.warn(`Change password attempt failed: User not Found - ID ${userId}`);
-        throw new ApiError(404, 'User not found', 'USER_NOT_FOUND');
-    }
-
-    const isMatch = await user.comparePassword(oldPassword);
-
-    if (!isMatch) {
-        logger.warn(`Change password attempt failed: Incorrect Password - ID ${userId}`);
-        throw new ApiError(401, 'Incorrect password', 'INCORRECT_PASSWORD');
-    }
-
-    user.password = newPassword;
-
-    try {
-        await user.save();
-        logger.info(`Passsword changed successfully - ID ${userId}`)
-    } catch (error: any) {
-        logger.error(`Error changing password - ID ${userId}: ${error.message}`, error);
-        throw new ApiError(500, 'Error changing password', 'DATABASE_ERROR', error);
-    }
-};
 
 export const AuthService = {
     register,
     validateToken,
     refreshToken,
     login,
-    changePassword
 };
