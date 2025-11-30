@@ -71,9 +71,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const verifyAuth = async () => {
+    const storedToken = localStorage.getItem('accessToken');
     const refreshMarker = localStorage.getItem('refreshMarker');
+
+    if (storedToken) {
+      try {
+        const { data } = await apiClient.get('/auth/me', {
+          headers: { Authorization: `Bearer ${storedToken}` }
+        });
+
+        setAuthState({
+          isAuthenticated: true,
+          user: data.data,
+          accessToken: storedToken,
+          isLoading: false,
+        });
+        return; 
+      } catch (error) {
+        console.log("Stored token expired or invalid, attempting refresh...");
+      }
+    }
+
     if (!refreshMarker) {
-      console.log('No refreshMarker - skipping refresh request');
       setAuthState(prev => ({ ...prev, isLoading: false }));
       return;
     }
