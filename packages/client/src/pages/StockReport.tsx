@@ -324,7 +324,7 @@ const StockReport = ({ filters }: ReportProps) => {
       </Card>
 
       <Dialog open={selectionOpen} onOpenChange={setSelectionOpen}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Reports for {selectedRow?.name}</DialogTitle>
             <DialogDescription>Select which transaction details you want to view.</DialogDescription>
@@ -394,7 +394,7 @@ const StockReport = ({ filters }: ReportProps) => {
       </Dialog>
 
       <Dialog open={detailsOpen} onOpenChange={closeDetails}>
-        <DialogContent className="sm:max-w-[650px] max-h-[90vh] flex flex-col">
+        <DialogContent className="sm:max-w-[650px] max-h-[90vh] flex flex-col" aria-describedby={undefined}>
           <DialogHeader>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2" onClick={goBackToSelection}>

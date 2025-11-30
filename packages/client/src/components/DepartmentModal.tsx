@@ -118,7 +118,7 @@ const DepartmentModal = ({ open, onOpenChange, department, onSave }: UserModalPr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px]" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{department ? 'Edit Department' : 'Add New Department'}</DialogTitle>
         </DialogHeader>

@@ -66,7 +66,7 @@ const ItemModal = ({ open, onOpenChange, item, onSave }: any) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[480px]" aria-describedby={undefined}>
         <DialogHeader><DialogTitle>{item ? 'Edit Item' : 'Add Item'}</DialogTitle></DialogHeader>
         <div className="space-y-4 py-4">
           <div><Label>Item Name</Label><Input value={form.name} onChange={e=>setForm({...form, name:e.target.value})} /></div>

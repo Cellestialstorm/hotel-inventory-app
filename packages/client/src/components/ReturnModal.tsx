@@ -52,7 +52,7 @@ const ReturnModal = ({ open, onOpenChange, item, onSave }: any) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px]">
+      <DialogContent className="sm:max-w-[420px]" aria-describedby={undefined}>
         <DialogHeader><DialogTitle>Return to Vendor</DialogTitle></DialogHeader>
         <div className="space-y-4 py-4">
           <div>

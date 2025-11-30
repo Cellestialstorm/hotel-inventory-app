@@ -54,7 +54,7 @@ const TransferModal = ({ open, onOpenChange, item, onSave }: any) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent className="sm:max-w-[520px]" aria-describedby={undefined}>
         <DialogHeader><DialogTitle>Transfer</DialogTitle></DialogHeader>
         <div className="space-y-4 py-4">
           <div><Label>Item</Label><div>{item?.name}</div></div>
