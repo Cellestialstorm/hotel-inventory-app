@@ -78,8 +78,8 @@ const StockReport = ({ filters }: ReportProps) => {
     try {
       const params: any = { from, to };
 
-      if (user?.role === UserRole.SUPER_ADMIN) {
-        params.hotelId = selectedHotelId;
+      if (user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.MANAGER) {
+        params.hotelId = user?.role === UserRole.SUPER_ADMIN ? selectedHotelId : user?.assignedHotelId;
         params.departmentId = selectedDepartment;
       } else {
         params.hotelId = user?.assignedHotelId;
