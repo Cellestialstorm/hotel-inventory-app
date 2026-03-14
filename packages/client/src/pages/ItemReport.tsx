@@ -73,7 +73,7 @@ const ItemReport = ({ filters }: ItemProps) => {
     try {
       const params: any = {};
 
-      if (user?.role === UserRole.ADMIN) {
+      if (user?.role === UserRole.SUPER_ADMIN) {
         if (selectedHotelId) params.hotelId = selectedHotelId;
         if (selectedDepartment) params.departmentId = selectedDepartment
       } else {
@@ -109,7 +109,7 @@ const ItemReport = ({ filters }: ItemProps) => {
     try {
       const params: any = { itemId: selectedItem, from, to };
 
-      if (user?.role === UserRole.ADMIN) {
+      if (user?.role === UserRole.SUPER_ADMIN) {
         params.hotelId = selectedHotelId;
         if (selectedDepartment !== 'all') params.departmentId = selectedDepartment;
       } else {

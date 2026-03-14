@@ -12,8 +12,11 @@ if (ACCESS_TOKEN_SECRET === 'your_access_secret_key_dev' || REFRESH_TOKEN_SECRET
 
 export interface ITokenPayload {
     userId: string;
+    name: string;
     username: string;
     role: string;
+    assignedHotelId: string;
+    assignedDepartmentId: string;
 }
 
 /**

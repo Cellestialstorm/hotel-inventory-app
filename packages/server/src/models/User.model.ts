@@ -8,6 +8,12 @@ import type { IUSER } from '@hotel-inventory/shared';
  */
 const UserSchema: Schema<IUSER> = new Schema(
   {
+    name: { 
+      type: String, 
+      required: true,
+      trim: true
+    },
+
     userId: {
       type: String,
       required: [true, 'User ID is required.'],
@@ -30,7 +36,7 @@ const UserSchema: Schema<IUSER> = new Schema(
     role: {
       type: String,
       enum: Object.values(UserRole), // Restricts values to the defined roles.
-      default: UserRole.USER,
+      default: UserRole.HOD,
       required: true,
     },
     assignedHotelId: {
@@ -41,7 +47,14 @@ const UserSchema: Schema<IUSER> = new Schema(
     assignedDepartmentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Department', // This assumes you have a 'Department' model.
-      required: [true, 'User must be assigned to a department.'],
+      required: [
+        function(this: any) {
+          // It is ONLY required if the user is an HOD or a regular USER.
+          // Managers, Admins, and Super Admins can skip this!
+          return this.role === 'HOD' || this.role === 'USER';
+        },
+        'HODs must be assigned to a department.'
+      ],
     },
     isActive: {
       type: Boolean,

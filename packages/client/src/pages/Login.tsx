@@ -50,10 +50,10 @@ const Login = () => {
         console.log('User role:', user.role);
 
         switch (user.role) {
-          case UserRole.ADMIN:
+          case UserRole.SUPER_ADMIN:
             navigate('/dashboard', { replace: true });
             break;
-          case UserRole.USER:
+          case UserRole.HOD || UserRole.MANAGER:
             navigate('/dashboard', { replace: true });
             break;
           default:

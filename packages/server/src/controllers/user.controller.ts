@@ -12,7 +12,7 @@ export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
     const filters = {
         assignedHotelId: req.query.assignedHotelId,
         assignedDepartmentId: req.query.assignedDepartmentId,
-        role: req.query.role ? req.query.role === UserRole.USER : undefined,
+        role: req.query.role ? req.query.role === UserRole.HOD : undefined,
         isActive: req.query.isActive ? req.query.isActive === 'true' : undefined
     };
 

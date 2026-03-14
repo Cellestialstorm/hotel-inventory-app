@@ -3,6 +3,7 @@ import mongoose, { Document } from "mongoose";
 
 export interface IUserAttributes {
     userId: string;
+    name: string;
     username: string;
     role: UserRole;
     assignedHotelId: mongoose.Types.ObjectId,

@@ -11,8 +11,6 @@ import { UserRole } from '@hotel-inventory/shared';
 import apiClient from '@/api/axios';
 import { useAuth } from '@/context/AuthContext';
 
-
-
 interface UserModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -29,9 +27,10 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
 
   const [formData, setFormData] = useState({
     username: '',
+    name: '',
     password: '',
     confirmPassword: '',
-    role: UserRole.USER,
+    role: '',
     assignedHotelId: '',
     assignedDepartmentId: '',
   });
@@ -48,24 +47,26 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
     if (user) {
       setFormData({
         username: user.username || '',
+        name: user.name || '',
         password: '',
         confirmPassword: '',
-        role: user.role || UserRole.USER,
+        role: user.role || UserRole.HOD,
         assignedHotelId: user.assignedHotelId ? user.assignedHotelId.toString() : '',
         assignedDepartmentId: user.assignedDepartmentId ? user.assignedDepartmentId.toString() : '',
       });
     } else {
       setFormData({
         username: '',
+        name: '',
         password: '',
         confirmPassword: '',
-        role: UserRole.USER,
+        role: UserRole.HOD,
         assignedHotelId: '',
         assignedDepartmentId: '',
       });
     }
     setErrors({});
-  }, [ user ]);
+  }, [user]);
 
   useEffect(() => {
     if (formData.assignedHotelId && departments.length > 0) {
@@ -113,6 +114,10 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
       newErrors.username = 'Username is required';
     }
 
+    if (!formData.name.trim()) {
+      newErrors.name = 'Full Name Required';
+    }
+
     if (!user && !formData.password) {
       newErrors.password = 'Password is required';
     }
@@ -125,11 +130,11 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
       newErrors.confirmPassword = 'Passwords do not match';
     }
 
-    if (formData.role === UserRole.USER) {
+    if (formData.role === UserRole.MANAGER || formData.role === UserRole.HOD) {
       if (!formData.assignedHotelId) {
         newErrors.hotelId = 'Hotel is required for non-admin users';
       }
-      if (!formData.assignedDepartmentId) {
+      if (formData.role === UserRole.HOD && !formData.assignedDepartmentId) {
         newErrors.departmentId = 'Department is required for non-admin users';
       }
     }
@@ -166,13 +171,14 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
 
     try {
       const payload = {
-        username: formData.username,
+        username: formData.username.trim().toLowerCase(),
+        name: formData.name.trim(),
         password: formData.password,
         role: formData.role,
         assignedHotelId:
-          formData.role === UserRole.USER ? formData.assignedHotelId : undefined,
+          formData.role !== UserRole.SUPER_ADMIN ? formData.assignedHotelId : undefined,
         assignedDepartmentId:
-          formData.role === UserRole.USER ? formData.assignedDepartmentId : undefined,
+          formData.role !== UserRole.SUPER_ADMIN && formData.role !== UserRole.MANAGER ? formData.assignedDepartmentId : undefined,
       };
 
       const headers = {
@@ -187,7 +193,6 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
         toast.success('User registered successfully!');
       }
 
-
       onSave();
       onOpenChange(false);
     } catch (error: any) {
@@ -201,23 +206,39 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]" aria-describedby={undefined}>
+      {/* Increased max width slightly so the 2 columns have room to breathe */}
+      <DialogContent className="sm:max-w-[600px]" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{user ? 'Edit User' : 'Add New User'}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        {/* THE FIX: Changed from space-y-4 to a 2-column Grid layout! */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+          
+          {/* Row 1 */}
           <div className="space-y-2">
-            <Label htmlFor="username">User Name *</Label>
+            <Label htmlFor="name">Full Name *</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="e.g. Rohan Sharma"
+            />
+            {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="username">Login Username *</Label>
             <Input
               id="username"
               value={formData.username}
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
               placeholder="Enter username"
             />
-            {errors.username && <p className="text-sm text-danger">{errors.username}</p>}
+            {errors.username && <p className="text-sm text-red-500">{errors.username}</p>}
           </div>
 
+          {/* Row 2 */}
           <div className="space-y-2">
             <Label htmlFor="password">Password {!user && '*'}</Label>
             <div className="relative">
@@ -226,7 +247,7 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
                 type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder={user ? 'Leave blank to keep current' : 'Enter password'}
+                placeholder={user ? 'Leave blank' : 'Enter password'}
               />
               <button
                 type="button"
@@ -251,38 +272,56 @@ const UserModal = ({ open, onOpenChange, user, onSave }: UserModalProps) => {
             {errors.confirmPassword && <p className="text-sm text-danger">{errors.confirmPassword}</p>}
           </div>
 
-          {formData.role !== 'ADMIN' && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="hotel">Hotel *</Label>
-                <Select value={formData.assignedHotelId} onValueChange={(value) => handleHotelChange(value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select hotel" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {hotels.map((hotel) => (
-                      <SelectItem key={hotel._id} value={hotel._id}>{hotel.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.hotelId && <p className="text-sm text-danger">{errors.hotelId}</p>}
-              </div>
+          {/* Row 3 */}
+          <div className="space-y-2">
+            <Label htmlFor="role">User Role *</Label>
+            <Select
+              value={formData.role}
+              onValueChange={(value) => setFormData({ ...formData, role: value, assignedDepartmentId: value === 'MANAGER' ? '' : formData.assignedDepartmentId })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[250px]">
+                <SelectItem value="MANAGER">Manager</SelectItem>
+                <SelectItem value="HOD">Head of Department (HOD)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="department">Department *</Label>
-                <Select value={formData.assignedDepartmentId} onValueChange={(value) => setFormData({ ...formData, assignedDepartmentId: value })} disabled={!formData.assignedHotelId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredDepartments.map(dept => (
-                      <SelectItem key={dept._id} value={dept._id}>{dept.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.departmentId && <p className="text-sm text-danger">{errors.departmentId}</p>}
-              </div>
-            </>
+          {formData.role !== UserRole.SUPER_ADMIN && (
+            <div className="space-y-2">
+              <Label htmlFor="hotel">Hotel *</Label>
+              <Select value={formData.assignedHotelId} onValueChange={(value) => handleHotelChange(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select hotel" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[250px]">
+                  {hotels.map((hotel) => (
+                    <SelectItem key={hotel._id} value={hotel._id}>{hotel.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.hotelId && <p className="text-sm text-red-500">{errors.hotelId}</p>}
+            </div>
+          )}
+
+          {/* Row 4 (Only shows for HOD) - Spans both columns to look clean */}
+          {formData.role !== UserRole.SUPER_ADMIN && formData.role === UserRole.HOD && (
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="department">Department *</Label>
+              <Select value={formData.assignedDepartmentId} onValueChange={(value) => setFormData({ ...formData, assignedDepartmentId: value })} disabled={!formData.assignedHotelId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[250px]">
+                  {filteredDepartments.map(dept => (
+                    <SelectItem key={dept._id} value={dept._id}>{dept.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.departmentId && <p className="text-sm text-red-500">{errors.departmentId}</p>}
+            </div>
           )}
         </div>
 

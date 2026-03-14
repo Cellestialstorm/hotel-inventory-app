@@ -15,6 +15,7 @@ import hotelRoutes from './routes/hotel.routes';
 import userRoutes from './routes/user.routes';
 import itemRoutes from './routes/item.routes'
 import reportRoutes from './routes/report.routes'
+import transactionRoutes from './routes/transaction.routes'
 
 const app = express();
 
@@ -66,6 +67,7 @@ app.use('/api/hotels', hotelRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/transactions', transactionRoutes)
 
 // --- Error Handling Middleware ---
 app.use((_req, _res, next) => {

@@ -11,42 +11,49 @@ const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || 'your_access_toke
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || 'your_refresh_token_secret';
 
 /**
- *  Create a new user. Only intended for Admin (authorization should be checked before calling).
+ * Create a new user. Only intended for Admin (authorization should be checked before calling).
  * @param userData - The user data to create.
  * @returns The created user object (without password).
  */
-
 const register = async (userData: IRegisterRequest): Promise<Omit<IUSER, 'password' | 'comparePassword'>> => {
-    const { username, password, role = UserRole.USER, assignedDepartmentId, assignedHotelId } = userData;
+    const { name, username, password, role, assignedDepartmentId, assignedHotelId } = userData;
 
-    if (!username || !password || !assignedHotelId || !assignedDepartmentId) {
+    if (!name || !username || !password || !assignedHotelId) {
         throw new ApiError(400, 'Missing required fields', 'Validation_Error');
     }
 
-    const existingUser = await User.findOne({ $or: [{ username }] }).lean();
+    // Convert username to lowercase to prevent duplicate users like "Rohan" and "rohan"
+    const lowerCaseUsername = username.toLowerCase();
+
+    const existingUser = await User.findOne({ username: lowerCaseUsername }).lean();
     if (existingUser) {
         throw new ApiError(409, 'Username already exists', 'Conflict_Error');
     }
 
     const uniqueUserId = new mongoose.Types.ObjectId().toString();
 
+    if (!role || ![UserRole.HOD, UserRole.MANAGER].includes(role)) {
+        throw new ApiError(400, 'Invalid user role', 'Validation_Error');
+    }
+
     const newUser = new User({
         userId: uniqueUserId,
-        username,
+        name: name.trim(), // Trim spaces off the real name
+        username: lowerCaseUsername, // Save as lowercase
         password,
         role,
-        assignedHotelId: assignedHotelId,  // Map hotelID from shared type to assignedHotelId in server model
-        assignedDepartmentId: assignedDepartmentId,  // Map departmentID from shared type to assignedDepartmentId in server model
+        assignedHotelId: assignedHotelId,  
+        assignedDepartmentId: role === UserRole.HOD ? assignedDepartmentId : undefined, 
         isActive: true,
     });
 
     try {
         const savedUser = await newUser.save();
         const userToReturn = savedUser.toObject();
-        logger.info(`User ${username} registered successfully`);
+        logger.info(`User ${lowerCaseUsername} registered successfully`);
         return userToReturn;
     } catch (error: any) {
-        logger.error(`Error during registration for ${username}: ${error.message}`);
+        logger.error(`Error during registration for ${lowerCaseUsername}: ${error.message}`);
         if (error.name === 'ValidationError') {
             throw new ApiError(400, 'Validation Failed', 'Validation_Error', error.errors);
         } else {
@@ -57,10 +64,9 @@ const register = async (userData: IRegisterRequest): Promise<Omit<IUSER, 'passwo
 
 /**
 * Authenticate a user.
-* @param credentials User loging credentials (Usernaem/email and password).
+* @param credentials User login credentials (Username and password).
 * @returns An object containing the access and refresh tokens.
 */
-
 const login = async (credentials: ILoginRequest): Promise<{ accessToken: string; refreshToken: string; user: Omit<IUSER, 'password' | 'comparePassword'> }> => {
     const { username, password } = credentials;
 
@@ -88,13 +94,16 @@ const login = async (credentials: ILoginRequest): Promise<{ accessToken: string;
     }
 
     const payload: ITokenPayload = {
-        userId: user.userId,  // Use userId from user object (which is the server-side naming)
+        userId: user.userId, 
+        name: user.name, // <--- ADDED REAL NAME TO JWT PAYLOAD
         username: user.username,
         role: user.role,
+        assignedHotelId: user.assignedHotelId?.toString() || '', 
+        assignedDepartmentId: user.assignedDepartmentId?.toString() || ''
     };
 
     const accessToken = generateAccessToken(payload);
-    const refreshToken = generateRefreshToken({ userId: user.userId });  // Use userId from user object
+    const refreshToken = generateRefreshToken({ userId: user.userId }); 
 
     const userToReturn = user.toObject();
     delete userToReturn.password;
@@ -109,7 +118,6 @@ const login = async (credentials: ILoginRequest): Promise<{ accessToken: string;
  * @param token The JWT access token to validate.
  * @returns The decoded token payload.
  */
-
 const validateToken = (token: string): ITokenPayload => {
     try {
         const payload = verifyToken<ITokenPayload>(token, ACCESS_TOKEN_SECRET);
@@ -126,16 +134,15 @@ const validateToken = (token: string): ITokenPayload => {
  * @param refreshToken - The refresh token to use for generating a new access token.
  * @returns A new access token.
  */
-
 const refreshToken = async (refreshToken: string): Promise<{ accessToken: string, user: IClientUser }> => {
     if (!refreshToken) {
         throw new ApiError(400, 'Refresh token is required', 'REFRESH_TOKEN_MISSING');
     }
 
     try {
-        const { userId: userId } = verifyToken<{ userId: string }>(refreshToken, REFRESH_TOKEN_SECRET);  // Expect userID from token (shared type naming)
+        const { userId: userId } = verifyToken<{ userId: string }>(refreshToken, REFRESH_TOKEN_SECRET); 
 
-        const user = await User.findOne({ userId: userId, isActive: true }).select('-password -_id --__v').lean();  // Use userId for server-side lookup
+        const user = await User.findOne({ userId: userId, isActive: true }).select('-password -_id --__v').lean(); 
 
         if (!user) {
             logger.warn(`Refresh token attempted for non-existent user: ${userId}`)
@@ -144,8 +151,11 @@ const refreshToken = async (refreshToken: string): Promise<{ accessToken: string
 
         const newPayload: ITokenPayload = {
             userId: user.userId,
+            name: user.name, // <--- ADDED REAL NAME TO REFRESH PAYLOAD
             username: user.username,
             role: user.role,
+            assignedHotelId: user.assignedHotelId?.toString() || '',
+            assignedDepartmentId: user.assignedDepartmentId?.toString() || ''
         };
 
         const newAccessToken = generateAccessToken(newPayload);
@@ -153,6 +163,7 @@ const refreshToken = async (refreshToken: string): Promise<{ accessToken: string
 
         const clientUser: IClientUser = {
             userId: user.userId,
+            name: user.name,
             username: user.username,
             role: user.role,
             assignedHotelId: user.assignedHotelId,
@@ -172,8 +183,6 @@ const refreshToken = async (refreshToken: string): Promise<{ accessToken: string
         throw new ApiError(401, 'Could not refresh token', 'REFRESH_TOKEN_FAILEd');
     }
 };
-
-
 
 export const AuthService = {
     register,

@@ -3,6 +3,7 @@ import { DepartmentService } from '@/services/department.service';
 import ApiResponse from '@/utils/ApiResponse';
 import ApiError from '@/utils/ApiError';
 import { asyncHandler } from '../utils/asyncHandler';
+import { UserRole } from '@hotel-inventory/shared';
 
 /**
  * Handles creation of an new department
@@ -21,9 +22,14 @@ const createDepartment = asyncHandler(async (req: Request, res: Response) => {
  */
 
 const getAllDepartments = asyncHandler(async (req: Request, res: Response) => {
-    const hotelId = req.params.hotelId || req.query.hotelId as string | undefined;
+    let hotelId = req.params.hotelId || req.query.hotelId as string | undefined;
+
+    if (req.user?.role === UserRole.MANAGER || req.user?.role === UserRole.HOD) {
+        hotelId = req.user.assignedHotelId;
+    }
+
     const departments = await DepartmentService.getAllDepartments(hotelId);
-    res.status(200).json(new ApiResponse(200, departments, 'Departments fetched successfully'));
+    return res.status(200).json(new ApiResponse(200, departments, 'Departments fetched successfully'));
 });
 
 /**
@@ -33,7 +39,18 @@ const getAllDepartments = asyncHandler(async (req: Request, res: Response) => {
 
 const getDepartmentById = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
+
+    if (req.user?.role === UserRole.HOD && req.user.assignedDepartmentId !== id) {
+        throw new ApiError(403, 'Forbidden: You cannot view other departments', 'FORBIDDEN');
+    }
     const department = await DepartmentService.getDepartmentById(id);
+    if (!department) {
+        throw new ApiError(404, 'Department not found', 'DEPARTMENT_NOT_FOUND');
+    }
+
+    if (req.user?.role === UserRole.MANAGER && department.hotelId.toString() !== req.user.assignedHotelId) {
+        throw new ApiError(403, 'Forbidden: This department belongs to another hotel', 'FORBIDDEN');
+    }
     res.status(200).json(new ApiResponse(200, department, 'Department fetched successfully'));
 });
 

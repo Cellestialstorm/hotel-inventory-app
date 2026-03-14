@@ -11,6 +11,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Printer } from 'lucide-react';
 import DamageModal from '@/components/DamageModal';
 import TransferModal from '@/components/TransferModal';
 import ReturnModal from '@/components/ReturnModal';
@@ -26,6 +35,10 @@ const Inventory = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
 
+  const [printPromptOpen, setPrintPromptOpen] = useState(false);
+  const [recentlyCreatedTx, setRecentlyCreatedTx] = useState<any>(null);
+  const [currentHotelName, setCurrentHotelName] = useState("INVENTORY RECEIPT");
+
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [damageModalOpen, setDamageModalOpen] = useState(false);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
@@ -36,10 +49,30 @@ const Inventory = () => {
   const [departments, setDepartments] = useState<any[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
 
+  useEffect(() => {
+    const fetchHotelName = async () => {
+      const idToFetch = user?.role === UserRole.SUPER_ADMIN ? selectedHotelId : user?.assignedHotelId;
+      if (!idToFetch) return;
+      
+      try {
+        const res = await apiClient.get(`/hotels/${idToFetch}`, {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        if (res.data?.data?.name) {
+          setCurrentHotelName(res.data.data.name);
+        }
+      } catch (error) {
+        console.error("Failed to fetch hotel name", error);
+      }
+    };
+
+    fetchHotelName();
+  }, [selectedHotelId, user?.assignedHotelId, accessToken, user?.role]);
+
   const loadDepartments = async () => {
     try {
       const params: any = {};
-      if (user?.role === UserRole.ADMIN) {
+      if (user?.role === UserRole.SUPER_ADMIN) {
         if (selectedHotelId) params.hotelId = selectedHotelId;
       } else {
         params.hotelId = user?.assignedHotelId;
@@ -68,7 +101,7 @@ const Inventory = () => {
   const loadItems = async () => {
     setLoading(true);
     try {
-      if (user?.role === UserRole.ADMIN && !selectedHotelId) {
+      if (user?.role === UserRole.SUPER_ADMIN && !selectedHotelId) {
         setItems([]);
         setLoading(false);
         return;
@@ -76,7 +109,7 @@ const Inventory = () => {
 
       const params: any = {};
 
-      if (user?.role === UserRole.ADMIN) {
+      if (user?.role === UserRole.SUPER_ADMIN) {
         if (selectedHotelId) params.hotelId = selectedHotelId;
       } else {
         if (user?.assignedHotelId) params.hotelId = user?.assignedHotelId;
@@ -91,7 +124,7 @@ const Inventory = () => {
         params,
       });
       setItems(res.data.data || []);
-    } catch (err:any) {
+    } catch (err: any) {
       console.error(err);
       toast.error('Failed to load items');
     } finally {
@@ -106,23 +139,41 @@ const Inventory = () => {
   );
 
   const onAdd = () => { setSelectedItem(null); setItemModalOpen(true); };
-  const onEdit = (it:any) => { setSelectedItem(it); setItemModalOpen(true); };
-  const onDamage = (it:any) => { setSelectedItem(it); setDamageModalOpen(true); };
-  const onTransfer = (it:any) => { setSelectedItem(it); setTransferModalOpen(true); };
-  const onReturn = (it:any) => { setSelectedItem(it); setReturnModalOpen(true); };
-  const onDelete = (it:any) => { setSelectedItem(it); setDeleteDialogOpen(true); };
+  const onEdit = (it: any) => { setSelectedItem(it); setItemModalOpen(true); };
+  const onDamage = (it: any) => { setSelectedItem(it); setDamageModalOpen(true); };
+  const onTransfer = (it: any) => { setSelectedItem(it); setTransferModalOpen(true); };
+  const onReturn = (it: any) => { setSelectedItem(it); setReturnModalOpen(true); };
+  const onDelete = (it: any) => { setSelectedItem(it); setDeleteDialogOpen(true); };
 
   const confirmDelete = async () => {
     if (!selectedItem) return;
     setDeleteLoading(true);
     try {
-      await apiClient.delete(`/items/${selectedItem._id}`, { headers: { Authorization: `Bearer ${accessToken}` }});
+      await apiClient.delete(`/items/${selectedItem._id}`, { headers: { Authorization: `Bearer ${accessToken}` } });
       toast.success('Item deleted');
       setDeleteDialogOpen(false);
       loadItems();
-    } catch (err:any) {
+    } catch (err: any) {
       toast.error(err.response?.data?.message || 'Delete failed');
     } finally { setDeleteLoading(false); }
+  };
+
+  const handleTransactionSuccess = (actionData: { transactionId: string, type: string, quantity: number, remarks?: string }) => {
+    loadItems();
+    if (actionData) {
+      setRecentlyCreatedTx({
+        transactionId: actionData.transactionId, 
+        date: new Date().toLocaleString(), 
+        type: actionData.type || 'Transaction',
+        itemName: selectedItem?.name || 'Unknown Item',
+        quantity: actionData.quantity || 0,
+        departmentName: selectedItem?.departmentId?.name || 'N/A',
+        remarks: actionData.remarks || 'No remarks provided.',
+        staffName: user?.username || 'Staff',
+        hotelName: currentHotelName
+      });
+      setPrintPromptOpen(true);
+    }
   };
 
   return (
@@ -134,22 +185,24 @@ const Inventory = () => {
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-          <Select
-            value={selectedDepartment}
-            onValueChange={setSelectedDepartment}
-          >
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Select Department" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Departments</SelectItem>
-              {departments.map((dept) => (
-                <SelectItem key={dept._id} value={dept._id}>
-                  {dept.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {(user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.MANAGER) && (
+            <Select
+              value={selectedDepartment}
+              onValueChange={setSelectedDepartment}
+            >
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="Select Department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                {departments.map((dept) => (
+                  <SelectItem key={dept._id} value={dept._id}>
+                    {dept.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           <Button className="gap-2 w-full sm:w-auto" onClick={onAdd}>
             <Plus className="w-4 h-4" /> Add Item
@@ -166,67 +219,97 @@ const Inventory = () => {
 
           {loading ? <div className="text-center py-12">Loading...</div> :
             filtered.length === 0 ? <div className="text-center py-12">No items</div> :
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b whitespace-nowrap">
-                    <th className="py-3 px-4 text-left">Item Name</th>
-                    <th className="py-3 px-4 text-left">Department</th>
-                    <th className="py-3 px-4 text-right">Current Stock</th>
-                    <th className="py-3 px-4 text-right">Min Stock</th>
-                    <th className="py-3 px-4 text-right">Shortage</th>
-                    <th className="py-3 px-4 text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(it => {
-                    const shortage = Math.max(0, (it.minStock || 0) - (it.currentStock || 0));
-                    return (
-                      <tr key={it._id} className="border-b hover:bg-muted/50 whitespace-nowrap">
-                        <td className="py-3 px-4 font-medium">{it.name}</td>
-                        <td className="py-3 px-4">{it.departmentId?.name || '-'}</td>
-                        <td className="py-3 px-4 text-right">{it.currentStock}</td>
-                        <td className="py-3 px-4 text-right">{it.minStock}</td>
-                        <td className={`py-3 px-4 text-right ${shortage > 0 ? 'text-danger font-bold' : ''}`}>{shortage}</td>
-                        <td className="py-3 px-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            {user?.role === 'ADMIN' && (
-                              <Button size="icon" variant="ghost" onClick={() => onEdit(it)}>
-                                <Edit className="w-4 h-4" />
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b whitespace-nowrap">
+                      <th className="py-3 px-4 text-left">Item Name</th>
+                      <th className="py-3 px-4 text-left">Department</th>
+                      <th className="py-3 px-4 text-right">Current Stock</th>
+                      <th className="py-3 px-4 text-right">Min Stock</th>
+                      <th className="py-3 px-4 text-right">Shortage</th>
+                      <th className="py-3 px-4 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map(it => {
+                      const shortage = Math.max(0, (it.minStock || 0) - (it.currentStock || 0));
+                      return (
+                        <tr key={it._id} className="border-b hover:bg-muted/50 whitespace-nowrap">
+                          <td className="py-3 px-4 font-medium">{it.name}</td>
+                          <td className="py-3 px-4">{it.departmentId?.name || '-'}</td>
+                          <td className="py-3 px-4 text-right">{it.currentStock}</td>
+                          <td className="py-3 px-4 text-right">{it.minStock}</td>
+                          <td className={`py-3 px-4 text-right ${shortage > 0 ? 'text-danger font-bold' : ''}`}>{shortage}</td>
+                          <td className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              {(user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.MANAGER) && (
+                                <Button size="icon" variant="ghost" onClick={() => onEdit(it)}>
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                              )}
+                              <Button size="icon" variant="ghost" onClick={() => onDamage(it)} title="Damage">
+                                <Package className="w-4 h-4" />
                               </Button>
-                            )}
-                            <Button size="icon" variant="ghost" onClick={() => onDamage(it)} title="Damage">
-                              <Package className="w-4 h-4" />
-                            </Button>
-                            <Button size="icon" variant="ghost" onClick={() => onTransfer(it)} title="Transfer">
-                              <ArrowRightLeft className="w-4 h-4" />
-                            </Button>
-                            <Button size="icon" variant="ghost" onClick={() => onReturn(it)} title="Return">
-                              <Undo2 className="w-4 h-4" />
-                            </Button>
-                            
-                            {user?.role === 'ADMIN' && (
-                              <Button size="icon" variant="ghost" className="text-danger" onClick={() => onDelete(it)}>
-                                <Trash2 className="w-4 h-4" />
+                              <Button size="icon" variant="ghost" onClick={() => onTransfer(it)} title="Transfer">
+                                <ArrowRightLeft className="w-4 h-4" />
                               </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                              <Button size="icon" variant="ghost" onClick={() => onReturn(it)} title="Return">
+                                <Undo2 className="w-4 h-4" />
+                              </Button>
+
+                              {(user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.MANAGER) && (
+                                <Button size="icon" variant="ghost" className="text-danger" onClick={() => onDelete(it)}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
           }
         </CardContent>
       </Card>
 
       <ItemModal open={itemModalOpen} onOpenChange={setItemModalOpen} item={selectedItem} onSave={loadItems} />
-      <DamageModal open={damageModalOpen} onOpenChange={setDamageModalOpen} item={selectedItem} onSave={loadItems} />
-      <TransferModal open={transferModalOpen} onOpenChange={setTransferModalOpen} item={selectedItem} onSave={loadItems} />
-      <ReturnModal open={returnModalOpen} onOpenChange={setReturnModalOpen} item={selectedItem} onSave={loadItems} />
+      <DamageModal open={damageModalOpen} onOpenChange={setDamageModalOpen} item={selectedItem} onSave={handleTransactionSuccess} />
+      <TransferModal open={transferModalOpen} onOpenChange={setTransferModalOpen} item={selectedItem} onSave={handleTransactionSuccess} />
+      <ReturnModal open={returnModalOpen} onOpenChange={setReturnModalOpen} item={selectedItem} onSave={handleTransactionSuccess} />
       <DeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} itemName={selectedItem?.name || ''} onConfirm={confirmDelete} loading={deleteLoading} />
+
+      {/* Post-transaction print prompt */}
+      <Dialog open={printPromptOpen} onOpenChange={setPrintPromptOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Transaction Successful</DialogTitle>
+            <DialogDescription>
+              Would you like to print a receipt for this transaction?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm"><strong>Item:</strong> {selectedItem?.name}</p>
+            <p className="text-sm"><strong>Quantity:</strong> {recentlyCreatedTx?.quantity}</p>
+            <p className="text-sm capitalize"><strong>Type:</strong> {recentlyCreatedTx?.type?.toLowerCase()}</p>
+            </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPrintPromptOpen(false)}>
+              Close
+            </Button>
+            <Button onClick={() => {
+              // Add a slight delay to ensure the hidden component is rendered
+              setTimeout(() => window.print(), 500);
+              setPrintPromptOpen(false);
+            }}>
+              <Printer className="w-4 h-4 mr-2" />
+              Print Receipt
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { HotelService } from '@/services/hotel.service';
 import ApiResponse from '@/utils/ApiResponse';
 import ApiError from '@/utils/ApiError';
 import { asyncHandler } from '@/utils/asyncHandler';
+import { UserRole } from '@hotel-inventory/shared';
 
 /**
  * Handles creation of a new hotel.
@@ -21,9 +22,14 @@ const createHotel = asyncHandler(async (req: Request, res: Response) => {
  */
 
 const getAllHotels = asyncHandler(async (req: Request, res: Response) => {
-    const includeInactive = req.query.includeInactive === 'true' && req.user?.role === 'ADMIN';
+    const includeInactive = req.query.includeInactive === 'true' && req.user?.role === UserRole.SUPER_ADMIN;
+
+    if (req.user?.role !== UserRole.SUPER_ADMIN) {
+        const hotel = await HotelService.getHotelById(req.user?.assignedHotelId as string);
+        return res.status(200).json(new ApiResponse(200, [hotel], 'Hotel fetched successfully'));
+    }
     const hotels = await HotelService.getAllHotels(includeInactive);
-    res.status(200).json(new ApiResponse(200, hotels, 'Hotels fetched successfully'));
+    return res.status(200).json(new ApiResponse(200, hotels, 'Hotels fetched successfully'));
 });
 
 /**
@@ -33,6 +39,12 @@ const getAllHotels = asyncHandler(async (req: Request, res: Response) => {
 
 const getHotelById = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
+
+    // Security check: Only SUPER_ADMIN or users assigned to THIS hotel can view it
+    if (req.user?.role !== UserRole.SUPER_ADMIN && req.user?.assignedHotelId?.toString() !== id) {
+        throw new ApiError(403, 'Forbidden: You cannot view details for another hotel', 'FORBIDDEN');
+    }
+
     const hotel = await HotelService.getHotelById(id);
     res.status(200).json(new ApiResponse(200, hotel, 'Hotel fetched successfully'));
 });

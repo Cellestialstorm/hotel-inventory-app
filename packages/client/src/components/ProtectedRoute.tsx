@@ -21,7 +21,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
     return <Navigate to='/login' state= {{ from: location }} replace />;
   }
 
-  if (requireAdmin && user?.role !== UserRole.ADMIN) {
+  if (requireAdmin && user?.role !== UserRole.SUPER_ADMIN) {
     toast.error('Access Denied: Admin role required.');
     return <Navigate to='/dashboard' replace />;
   }

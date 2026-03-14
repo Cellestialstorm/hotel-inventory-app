@@ -9,7 +9,7 @@ import logger from '@/utils/logger';
 
 export const ItemService = {
   async createItem(payload: {
-    name: string; hotelId: string; departmentId: string; quantityAdded: number; minStock: number; category?: string; unit?: string; createdBy?: string;
+    name: string; hotelId: string; departmentId: string; quantityAdded: number; minStock: number; category?: string; unit?: string; createdBy?: string; creatorName?: string;
   }) {
     const hId = new mongoose.Types.ObjectId(payload.hotelId);
     const dId = new mongoose.Types.ObjectId(payload.departmentId);
@@ -37,13 +37,15 @@ export const ItemService = {
       await item.save();
     }
 
+    // ALREADY PERFECT HERE!
     await TransactionService.create({
       itemId: item._id,
       hotelId: hId,
       departmentId: dId,
       type: ItemTransactionType.ADD,
       quantity: payload.quantityAdded,
-      createdBy: payload.createdBy
+      createdBy: payload.createdBy,
+      creatorName: payload.creatorName, 
     });
 
     return item;
@@ -78,16 +80,17 @@ export const ItemService = {
     item.currentStock -= qty;
     await item.save();
 
-    await TransactionService.create({
+    const transaction = await TransactionService.create({
       itemId: item._id,
       hotelId: item.hotelId,
       departmentId: item.departmentId,
       type: ItemTransactionType.DAMAGE,
       quantity: qty,
       remarks,
-      createdBy: user?.username
+      createdBy: user?.username,
+      creatorName: user?.name // <--- ADDED
     });
-    return item;
+    return { item, transaction };
   },
 
   async transfer(
@@ -136,7 +139,8 @@ export const ItemService = {
       await target.save();
     }
 
-    await TransactionService.create({
+    // TRANSFER OUT LOG
+    const transaction = await TransactionService.create({
       itemId: item._id,
       hotelId: item.hotelId,
       departmentId: item.departmentId,
@@ -145,8 +149,10 @@ export const ItemService = {
       remarks,
       relatedId: target._id,
       createdBy: user?.username,
+      creatorName: user?.name, // <--- ADDED
     });
 
+    // TRANSFER IN LOG
     await TransactionService.create({
       itemId: target._id,
       hotelId: destHotel,
@@ -156,9 +162,10 @@ export const ItemService = {
       remarks,
       relatedId: item._id,
       createdBy: user?.username,
+      creatorName: user?.name, // <--- ADDED
     });
 
-    return { from: item, to: target };
+    return { from: item, to: target, transaction };
   },
 
   async returnToVendor(itemId: string, qty: number, remarks?: string, user?: any) {
@@ -172,17 +179,18 @@ export const ItemService = {
     item.currentStock -= qty;
     await item.save();
 
-    await TransactionService.create({
+    const transaction = await TransactionService.create({
       itemId: item._id,
       hotelId: item.hotelId,
       departmentId: item.departmentId,
       type: ItemTransactionType.RETURN_VENDOR,
       quantity: qty,
       remarks,
-      createdBy: user?.username
+      createdBy: user?.username,
+      creatorName: user?.name // <--- ADDED
     });
 
-    return item;
+    return { item, transaction };
   },
 
   async list(filter: any = {}) {

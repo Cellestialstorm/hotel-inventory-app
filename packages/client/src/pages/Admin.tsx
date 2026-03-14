@@ -301,7 +301,8 @@ const Admin = () => {
                   <thead>
                     <tr className="border-b bg-muted/50">
                       <th className="text-left p-3 font-medium min-w-[120px]">Username</th>
-                      <th className="text-left p-3 font-medium min-w-[150px] md:w-1/4">Hotel</th>
+                      <th className="text-left p-3 font-medium min-w-[150px] md:w-1/4">Full Name</th>
+                      <th className="text-left p-3 font-medium min-w-[150px] md:w-1/4">Role</th>
                       <th className="text-left p-3 font-medium min-w-[150px] md:w-1/4">Department</th>
                       <th className="text-center p-3 font-medium min-w-[100px]">Actions</th>
                     </tr>
@@ -310,9 +311,8 @@ const Admin = () => {
                     {filteredUsers.map((user) => (
                       <tr key={user._id} className="border-b hover:bg-muted/50 transition-colors">
                         <td className="p-3 font-medium">{user.username}</td>
-                        <td className="p-3 truncate max-w-[150px] md:max-w-xs" title={getHotelName(user.assignedHotelId)}>
-                          {getHotelName(user.assignedHotelId)}
-                        </td>
+                        <td className="p-3 truncate max-w-[150px] md:max-w-xs" title={getHotelName(user.name)}>{user.name}</td>
+                        <td className="p-3 truncate max-w-[150px] md:max-w-xs" title={getHotelName(user.role)}>{user.role}</td>
                         <td className="p-3 truncate max-w-[150px] md:max-w-xs" title={getDepartmentName(user.assignedDepartmentId)}>
                           {getDepartmentName(user.assignedDepartmentId)}
                         </td>

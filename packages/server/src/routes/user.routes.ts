@@ -1,12 +1,12 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.middleware';
-import { checkAdminOnly } from '../middleware/roleCheck.middleware';
+import { checkSuperAdminOnly } from '../middleware/roleCheck.middleware';
 import { UserController } from '@/controllers/user.controller';
 
 const router = express.Router();
 
 router.use(authenticateToken);
-router.use(checkAdminOnly);
+router.use(checkSuperAdminOnly);
 
 router.get('/', UserController.getAllUsers);
 

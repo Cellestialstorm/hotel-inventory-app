@@ -33,12 +33,12 @@ export const checkRole = (allowedRoles: UserRole[]) => {
  * Must be used AFTER authenticateYoken middleware.
  */
 
-export const checkAdminOnly = (req: Request, _res: Response, next: NextFunction): void => {
-    if (!req.user || req.user.role !== UserRole.ADMIN) {
-        logger.warn(`Admin access denied for users ${req.user?.username || 'N/A'} (Role: ${req.user?.role || 'N/A'}).`);
-        return next(new ApiError(403, 'Forbidden: Admin access required', 'FORBIDDEN_ADMIN_ONLY'));
+export const checkSuperAdminOnly = (req: Request, _res: Response, next: NextFunction): void => {
+    if (!req.user || req.user.role !== UserRole.SUPER_ADMIN) {
+        logger.warn(`Super Admin access denied for user ${req.user?.username || 'N/A'} (Role: ${req.user?.role || 'N/A'}).`);
+        return next(new ApiError(403, 'Forbidden: Super Admin access required', 'FORBIDDEN_SUPER_ADMIN_ONLY'));
     }
 
-    logger.debug(`Admin access granted for users ${req.user.username}`);
+    logger.debug(`Super Admin access granted for user ${req.user.username}`);
     next();
 };

@@ -36,7 +36,7 @@ const Layout = ({ children }: LayoutProps) => {
   const { user, logout, selectedHotelId, setSelectedHotelId, accessToken } = useAuth()
 
   useEffect(() => {
-    if (user?.role !== UserRole.ADMIN) return;
+    if (user?.role !== UserRole.SUPER_ADMIN) return;
 
     const fetchHotels = async () => {
       try {
@@ -65,14 +65,15 @@ const Layout = ({ children }: LayoutProps) => {
     { name: 'Dashboard', path: '/dashboard', icon: Home },
     { name: 'Inventory', path: '/inventory', icon: Package },
     { name: 'Reports', path: '/reports', icon: BarChart3 },
-    ...(user?.role === UserRole.ADMIN ? [{ name: 'Admin', path: '/admin', icon: Settings }] : []),
+    { name: 'Audit Logs', path: '/activity', icon: Package },
+    ...(user?.role === UserRole.SUPER_ADMIN ? [{ name: 'Admin', path: '/admin', icon: Settings }] : []),
   ];
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
-      case UserRole.ADMIN:
+      case UserRole.SUPER_ADMIN:
         return 'destructive';
-      case UserRole.USER:
+      case UserRole.MANAGER:
         return 'default';
       default:
         return 'secondary';
@@ -99,7 +100,7 @@ const Layout = ({ children }: LayoutProps) => {
           </div>
 
           <div className="flex-1 flex items-center gap-2 justify-end">
-            {user?.role === UserRole.ADMIN && (
+            {user?.role === UserRole.SUPER_ADMIN && (
               <>
                 <Select value={selectedHotelId ?? undefined} onValueChange={(v) => setSelectedHotelId(v)}>
                   <SelectTrigger className="w-[180px] shrink-0">
@@ -120,13 +121,13 @@ const Layout = ({ children }: LayoutProps) => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="gap-2">
                   <User className="w-4 h-4" />
-                  <span className="hidden sm:inline">{user?.username}</span>
+                  <span className="hidden sm:inline">{user?.name || user?.username}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium">{user?.username}</p>
+                    <p className="text-sm font-medium">{user?.name || user?.username}</p>
                     <Badge variant={getRoleBadgeVariant(user?.role || '')} className="w-fit">
                       {user?.role}
                     </Badge>
@@ -146,7 +147,7 @@ const Layout = ({ children }: LayoutProps) => {
       <div className="flex">
         {/* Sidebar */}
         <aside
-          className={`fixed lg:sticky top-16 left-0 z-40 h-[calc(100vh-4rem)] w-64 border-r bg-sidebar transition-transform duration-300 flex flex-col ${ // ADDED: flex flex-col
+          className={`fixed lg:sticky top-16 left-0 z-40 h-[calc(100vh-4rem)] w-64 border-r bg-sidebar transition-transform duration-300 flex flex-col print:hidden ${
             sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
             }`}
         >
@@ -185,7 +186,7 @@ const Layout = ({ children }: LayoutProps) => {
       {/* Overlay for mobile */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-background/80 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-30 bg-background/80 backdrop-blur-sm lg:hidden print:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}

@@ -29,7 +29,7 @@ const getUserById = async (userId: string): Promise<IClientUser> => {
 
 const getAllUsers = async (filters: any = {}): Promise<IClientUser[]> => {
     const query: mongoose.FilterQuery<IUSER> = {};
-    query.role = UserRole.USER;
+    query.role = { $in: [UserRole.HOD, UserRole.MANAGER] };
     if (filters.hotelId) query.assignedHotelId = new mongoose.Types.ObjectId(filters.hotelId);
     if (filters.departmentId) query.assignedDepartmentId = new mongoose.Types.ObjectId(filters.departmentId);
     if (typeof filters.isActive === 'boolean') query.isActive = filters.isActive;

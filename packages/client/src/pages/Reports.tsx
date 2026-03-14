@@ -29,7 +29,7 @@ const Reports = () => {
     setDeptLoading(true);
     try {
       const params: any = {};
-      if (user?.role === UserRole.ADMIN) {
+      if (user?.role === UserRole.SUPER_ADMIN) {
         if (selectedHotelId) params.hotelId = selectedHotelId;
       } else {
         params.hotelId = user?.assignedHotelId;
@@ -94,22 +94,24 @@ const Reports = () => {
             View and export inventory reports
           </p>
         </div>
-        <Select
-          value={selectedDepartment}
-          onValueChange={setSelectedDepartment}
-          disabled={departments.length === 0}
-        >
-          <SelectTrigger className="w-full sm:w-[200px]">
-            <SelectValue placeholder="Select Department" />
-          </SelectTrigger>
-          <SelectContent>
-            {departments.map((dept) => (
-              <SelectItem key={dept._id} value={dept._id}>
-                {dept.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {(user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.MANAGER) && (
+          <Select
+            value={selectedDepartment}
+            onValueChange={setSelectedDepartment}
+            disabled={departments.length === 0}
+          >
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Select Department" />
+            </SelectTrigger>
+            <SelectContent>
+              {departments.map((dept) => (
+                <SelectItem key={dept._id} value={dept._id}>
+                  {dept.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">

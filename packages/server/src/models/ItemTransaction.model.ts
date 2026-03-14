@@ -10,7 +10,15 @@ export interface IItemTransactionDocument extends Document {
     remarks?: string;
     relatedId?: mongoose.Types.ObjectId;
     createdBy?: string;
+    creatorName?: string;
     createdAt: Date;
+    updatedAt: Date;
+    editHistory?: Array<{
+        editedBy: string;
+        editedAt: Date;
+        previousQuantity: number;
+        reason: string;
+    }>;
 }
 
 const ItemTransactionSchema = new Schema<IItemTransactionDocument>(
@@ -23,8 +31,15 @@ const ItemTransactionSchema = new Schema<IItemTransactionDocument>(
     remarks: { type: String },
     relatedId: { type: Schema.Types.ObjectId },
     createdBy: { type: String },
+    creatorName: { type: String },
+    editHistory: [{
+        editedBy: { type: String, required: true },
+        editedAt: { type: Date, default: Date.now },
+        previousQuantity: { type: Number, required: true },
+        reason: { type: String, required: true }
+    }]
   },
-  { timestamps: { createdAt: true, updatedAt: false } }
+  { timestamps: { createdAt: true, updatedAt: true } }
 );
 
 ItemTransactionSchema.index({ itemId: 1, createdAt: 1 });
