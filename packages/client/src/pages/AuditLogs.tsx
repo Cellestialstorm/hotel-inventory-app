@@ -5,12 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Clock, Edit, Lock, History, User, Printer } from 'lucide-react';
+import { Clock, Edit, Lock, History, User, Printer, ChevronLeft, ChevronRight } from 'lucide-react';
 import apiClient from '@/api/axios';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@hotel-inventory/shared';
-import { printReceipt } from '@/utils/printReceipt'; // <-- IMPORT OUR NEW UTILITY!
+import { printReceipt } from '@/utils/printReceipt';
+
+const ITEMS_PER_PAGE = 50;
 
 const AuditLogs = () => {
   const { user, accessToken, selectedHotelId } = useAuth();
@@ -19,6 +21,9 @@ const AuditLogs = () => {
   
   const [selectedDeptId, setSelectedDeptId] = useState<string>('');
   const [loading, setLoading] = useState(true);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Edit Modal States
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -73,7 +78,20 @@ const AuditLogs = () => {
         headers: { Authorization: `Bearer ${accessToken}` },
         params
       });
-      setTransactions(res.data.data || []);
+      
+      const fetchedData = res.data.data || [];
+      
+      // --- THE FIX: Sort Ascending (Oldest First) ---
+      const sortedData = fetchedData.sort((a: any, b: any) => {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      });
+      
+      setTransactions(sortedData);
+      
+      // --- THE FIX: Map user instantly to Page N (The Latest Page) ---
+      const calculatedTotalPages = Math.ceil(sortedData.length / ITEMS_PER_PAGE) || 1;
+      setCurrentPage(calculatedTotalPages);
+
     } catch (error: any) {
       console.error(error);
       toast.error('Failed to load activity history');
@@ -90,6 +108,25 @@ const AuditLogs = () => {
     }, 60000);
     return () => clearInterval(interval);
   }, [accessToken, selectedDeptId, selectedHotelId]); 
+
+  // --- PAGINATION LOGIC ---
+  const totalPages = Math.ceil(transactions.length / ITEMS_PER_PAGE) || 1;
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const currentTransactions = transactions.slice(startIndex, endIndex);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      // Show first page, last page, and pages immediately surrounding the current page
+      if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+        pages.push(i);
+      } else if (pages[pages.length - 1] !== '...') {
+        pages.push('...');
+      }
+    }
+    return pages;
+  };
 
   // --- THE FRONTEND TIME-LOCK CHECKER ---
   const canEditTransaction = (tx: any) => {
@@ -155,11 +192,10 @@ const AuditLogs = () => {
     }
   };
 
-  // --- THE CLEANED UP PRINT GENERATOR ---
   const handlePrintReceipt = (tx: any) => {
     let displayRole = 'Staff';
     if (user?.role === UserRole.SUPER_ADMIN) {
-      displayRole = 'Owner'; // <--- Change this to 'General Manager' or anything else later!
+      displayRole = 'Owner'; 
     } else if (user?.role === UserRole.HOD) {
       displayRole = 'Head of Department';
     } else if (user?.role === UserRole.MANAGER) {
@@ -219,92 +255,142 @@ const AuditLogs = () => {
           ) : transactions.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">No recent activity found for this department.</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/30">
-                    <th className="py-3 px-4 text-left font-semibold">Date & Time</th>
-                    <th className="py-3 px-4 text-left font-semibold">Logged By</th>
-                    <th className="py-3 px-4 text-left font-semibold">Item</th>
-                    <th className="py-3 px-4 text-left font-semibold">Action</th>
-                    <th className="py-3 px-4 text-right font-semibold">Qty</th>
-                    <th className="py-3 px-4 text-left font-semibold">Remarks</th>
-                    <th className="py-3 px-4 text-center font-semibold">Status / Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.map((tx) => {
-                    const isEditable = canEditTransaction(tx);
-                    const wasEdited = tx.editHistory && tx.editHistory.length > 0;
-                    
-                    return (
-                      <tr key={tx._id} className="border-b hover:bg-muted/10 transition-colors">
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          {new Date(tx.createdAt).toLocaleString()}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-1.5 font-medium">
-                            <User className="w-3.5 h-3.5 text-muted-foreground" />
-                            {tx.creatorName || tx.createdBy || 'Unknown User'}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 font-bold">
-                          {tx.itemId?.name || 'Deleted Item'}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex flex-col items-start gap-1">
-                            <span className="px-2 py-1 bg-gray-100 rounded-md text-[10px] font-bold uppercase tracking-wider">
-                              {tx.type.replace('_', ' ')}
-                            </span>
-                            {wasEdited && (
-                              <span className="text-[10px] text-orange-600 font-semibold italic">Edited</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-right font-bold text-lg">
-                          {tx.quantity}
-                        </td>
-                        <td className="py-3 px-4 max-w-[200px] truncate" title={tx.remarks}>
-                          {tx.remarks || '-'}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            {isEditable ? (
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="text-blue-600 border-blue-200 hover:bg-blue-50 w-[85px]"
-                                onClick={() => openEditModal(tx)}
-                              >
-                                <Edit className="w-3.5 h-3.5 mr-1.5" /> Edit
-                              </Button>
-                            ) : (
-                              <div className="inline-flex items-center justify-center text-xs text-muted-foreground bg-gray-100 px-3 py-1.5 rounded-md border border-gray-200 w-[85px]">
-                                <Lock className="w-3.5 h-3.5 mr-1.5" /> Locked
-                              </div>
-                            )}
+            <div className="space-y-4">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/30">
+                      <th className="py-3 px-4 text-left font-semibold">Date & Time</th>
+                      <th className="py-3 px-4 text-left font-semibold">Logged By</th>
+                      <th className="py-3 px-4 text-left font-semibold">Item</th>
+                      <th className="py-3 px-4 text-left font-semibold">Action</th>
+                      <th className="py-3 px-4 text-right font-semibold">Qty</th>
+                      <th className="py-3 px-4 text-left font-semibold">Remarks</th>
+                      <th className="py-3 px-4 text-center font-semibold">Status / Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentTransactions.map((tx) => {
+                      const isEditable = canEditTransaction(tx);
+                      const wasEdited = tx.editHistory && tx.editHistory.length > 0;
+                      
+                      return (
+                        <tr key={tx._id} className="border-b hover:bg-muted/10 transition-colors">
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            {new Date(tx.createdAt).toLocaleString()}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1.5 font-medium">
+                              <User className="w-3.5 h-3.5 text-muted-foreground" />
+                              {tx.creatorName || tx.createdBy || 'Unknown User'}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 font-bold">
+                            {tx.itemId?.name || 'Deleted Item'}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex flex-col items-start gap-1">
+                              <span className="px-2 py-1 bg-gray-100 rounded-md text-[10px] font-bold uppercase tracking-wider">
+                                {tx.type.replace('_', ' ')}
+                              </span>
+                              {wasEdited && (
+                                <span className="text-[10px] text-orange-600 font-semibold italic">Edited</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-right font-bold text-lg">
+                            {tx.quantity}
+                          </td>
+                          <td className="py-3 px-4 max-w-[200px] truncate" title={tx.remarks}>
+                            {tx.remarks || '-'}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              {isEditable ? (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="text-blue-600 border-blue-200 hover:bg-blue-50 w-[85px]"
+                                  onClick={() => openEditModal(tx)}
+                                >
+                                  <Edit className="w-3.5 h-3.5 mr-1.5" /> Edit
+                                </Button>
+                              ) : (
+                                <div className="inline-flex items-center justify-center text-xs text-muted-foreground bg-gray-100 px-3 py-1.5 rounded-md border border-gray-200 w-[85px]">
+                                  <Lock className="w-3.5 h-3.5 mr-1.5" /> Locked
+                                </div>
+                              )}
 
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 hover:bg-gray-100 hover:text-black text-muted-foreground"
-                              onClick={() => handlePrintReceipt(tx)}
-                              title="Print Receipt"
-                            >
-                              <Printer className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 hover:bg-gray-100 hover:text-black text-muted-foreground"
+                                onClick={() => handlePrintReceipt(tx)}
+                                title="Print Receipt"
+                              >
+                                <Printer className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* PAGINATION CONTROLS */}
+              {totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t">
+                  <div className="text-sm text-muted-foreground">
+                    Showing <span className="font-medium text-foreground">{startIndex + 1}</span> to <span className="font-medium text-foreground">{Math.min(endIndex, transactions.length)}</span> of <span className="font-medium text-foreground">{transactions.length}</span> entries
+                  </div>
+                  
+                  <div className="flex items-center gap-1">
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="w-8 h-8" 
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    
+                    {getPageNumbers().map((pageNumber, index) => (
+                      pageNumber === '...' ? (
+                        <span key={index} className="px-2 text-muted-foreground">...</span>
+                      ) : (
+                        <Button 
+                          key={index} 
+                          variant={currentPage === pageNumber ? "default" : "outline"} 
+                          size="sm" 
+                          className="w-8 h-8" 
+                          onClick={() => setCurrentPage(pageNumber as number)}
+                        >
+                          {pageNumber}
+                        </Button>
+                      )
+                    ))}
+                    
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="w-8 h-8" 
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
       </Card>
 
+      {/* Edit Modal (Unchanged) */}
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
