@@ -15,7 +15,6 @@ import { toast } from 'sonner';
 import apiClient from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../../../shared/src';
-
 const Reports = () => {
   const { user, accessToken, selectedHotelId } = useAuth();
   const [searchParams] = useSearchParams();
@@ -23,10 +22,8 @@ const Reports = () => {
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [departments, setDepartments] = useState<any[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
-  const [deptLoading, setDeptLoading] = useState(true);
 
   const loadDepartments = async () => {
-    setDeptLoading(true);
     try {
       const params: any = {};
       if (user?.role === UserRole.SUPER_ADMIN) {
@@ -56,8 +53,6 @@ const Reports = () => {
       toast.error('Failed to load departments');
       setDepartments([]);
       setSelectedDepartment('');
-    } finally {
-      setDeptLoading(false);
     }
   };
 
@@ -76,14 +71,6 @@ const Reports = () => {
     params.set('tab', activeTab);
     window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
   }, [activeTab]);
-
-  if (deptLoading || !selectedDepartment) {
-    return (
-      <div className="text-center py-12 text-muted-foreground">
-        Loading departments...
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">

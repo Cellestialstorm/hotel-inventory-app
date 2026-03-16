@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Search, Edit, Trash2, Package, ArrowRightLeft, Undo2 } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Package, ArrowRightLeft, Undo2, Loader2 } from 'lucide-react';
 import ItemModal from '@/components/ItemModal';
 import {
   Select,
@@ -53,7 +53,7 @@ const Inventory = () => {
     const fetchHotelName = async () => {
       const idToFetch = user?.role === UserRole.SUPER_ADMIN ? selectedHotelId : user?.assignedHotelId;
       if (!idToFetch) return;
-      
+
       try {
         const res = await apiClient.get(`/hotels/${idToFetch}`, {
           headers: { Authorization: `Bearer ${accessToken}` }
@@ -162,8 +162,8 @@ const Inventory = () => {
     loadItems();
     if (actionData) {
       setRecentlyCreatedTx({
-        transactionId: actionData.transactionId, 
-        date: new Date().toLocaleString(), 
+        transactionId: actionData.transactionId,
+        date: new Date().toLocaleString(),
         type: actionData.type || 'Transaction',
         itemName: selectedItem?.name || 'Unknown Item',
         quantity: actionData.quantity || 0,
@@ -217,7 +217,11 @@ const Inventory = () => {
             <Input placeholder="Search items..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
           </div>
 
-          {loading ? <div className="text-center py-12">Loading...</div> :
+          {loading ? <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <Loader2 className="w-10 h-10 animate-spin text-primary/60 mb-4" />
+            <p className="text-sm font-medium">Inventory Loading...</p>
+            <p className="text-xs opacity-70 mt-1">This will just take a second</p>
+          </div> :
             filtered.length === 0 ? <div className="text-center py-12">No items</div> :
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -294,7 +298,7 @@ const Inventory = () => {
             <p className="text-sm"><strong>Item:</strong> {selectedItem?.name}</p>
             <p className="text-sm"><strong>Quantity:</strong> {recentlyCreatedTx?.quantity}</p>
             <p className="text-sm capitalize"><strong>Type:</strong> {recentlyCreatedTx?.type?.toLowerCase()}</p>
-            </div>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPrintPromptOpen(false)}>
               Close

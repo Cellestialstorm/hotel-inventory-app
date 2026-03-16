@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
 } from '../components/ui/dropdown-menu';
 import { Button } from '../components/ui/button';
-import { Eye, AlertTriangle, ArrowRightLeft, Undo2, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Eye, AlertTriangle, ArrowRightLeft, Undo2, ChevronRight, ArrowLeft, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -100,16 +100,15 @@ const StockReport = ({ filters }: ReportProps) => {
   };
 
   useEffect(() => {
+    if (!from || !to) return;
+
+    if ((user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.MANAGER) && !selectedDepartment) {
+      setData([]);
+      return;
+    }
+
     fetchReport(true);
-  }, [selectedHotelId, user?.assignedHotelId]);
-
-  useEffect(() => {
-    fetchReport(false);
-  }, [selectedDepartment]);
-
-  useEffect(() => {
-    if (from && to) fetchReport(false);
-  }, [from, to]);
+  }, [selectedHotelId, selectedDepartment, from, to, user?.assignedHotelId, user?.assignedDepartmentId]);
 
   const openSelectionMenu = (row: any) => {
     setSelectedRow(row);
@@ -199,7 +198,7 @@ const StockReport = ({ filters }: ReportProps) => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="h-9 px-3 gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                    <Eye className="w-4 h-4" /> 
+                    <Eye className="w-4 h-4" />
                     <span className="inline">Columns</span>
                   </Button>
                 </DropdownMenuTrigger>
@@ -243,7 +242,11 @@ const StockReport = ({ filters }: ReportProps) => {
 
         <CardContent>
           {loading ? (
-            <p className="py-8 text-center text-muted-foreground">Loading report...</p>
+            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <Loader2 className="w-10 h-10 animate-spin text-primary/60 mb-4" />
+              <p className="text-sm font-medium">Stock Report Loading...</p>
+              <p className="text-xs opacity-70 mt-1">This will just take a second</p>
+            </div>
           ) : data.length === 0 ? (
             <p className="py-8 text-center text-muted-foreground">
               No report data available for the selected period.
@@ -307,8 +310,8 @@ const StockReport = ({ filters }: ReportProps) => {
                         <td
                           key={col.key}
                           className={`p-2 text-right ${col.key === 'shortage' && r.shortage > 0
-                              ? 'text-red-600 font-semibold'
-                              : ''
+                            ? 'text-red-600 font-semibold'
+                            : ''
                             }`}
                         >
                           {r[col.key] ?? 0}

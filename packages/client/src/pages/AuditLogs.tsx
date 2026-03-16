@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Clock, Edit, Lock, History, User, Printer, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Clock, Edit, Lock, History, User, Printer, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import apiClient from '@/api/axios';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
@@ -251,7 +251,11 @@ const AuditLogs = () => {
       <Card>
         <CardContent className="pt-6">
           {loading ? (
-            <div className="text-center py-12 text-muted-foreground">Loading history...</div>
+            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <Loader2 className="w-10 h-10 animate-spin text-primary/60 mb-4" />
+              <p className="text-sm font-medium">Logs Loading...</p>
+              <p className="text-xs opacity-70 mt-1">This will just take a second</p>
+            </div>
           ) : transactions.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">No recent activity found for this department.</div>
           ) : (

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Plus, Search, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Loader2 } from 'lucide-react';
 import { IUSER, IHotel, IDepartment } from '../../../shared/src';
 import UserModal from '../components/UserModal';
 import DepartmentModal from '../components/DepartmentModal';
@@ -23,7 +23,8 @@ const Admin = () => {
   const [departments, setDepartments] = useState<IDepartment[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState<IDepartment | null>(null);
   const [departmentModalOpen, setDepartmentModalOpen] = useState(false);
-  
+  const [loading, setLoading] = useState(true);
+
   // Search terms
   const [searchTerm, setSearchTerm] = useState({
     users: '',
@@ -48,6 +49,7 @@ const Admin = () => {
   const { accessToken } = useAuth();
 
   const loadData = async () => {
+    setLoading(true);
     try {
       if (!accessToken) {
         console.error('No Token found');
@@ -74,6 +76,8 @@ const Admin = () => {
       console.error(error);
       const msg = error.response?.data?.message || 'Failed to load data';
       toast.error(msg);
+    } finally {
+      setLoading(false)
     }
   };
 
@@ -179,14 +183,14 @@ const Admin = () => {
       console.error('Failed to delete:', error);
       const msg = error.response?.data?.message || 'Failed to delete item';
       toast.error(msg);
-     } finally {
+    } finally {
       setDeleteLoading(false);
       setDeleteDialogOpen(false);
       setDeleteType(null);
       setSelectedUser(null);
       setSelectedDepartment(null);
       setSelectedHotel(null);
-     }
+    }
   };
 
   const getHotelName = (hotelId?: string | any) => {
@@ -205,7 +209,7 @@ const Admin = () => {
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.username.toLowerCase().includes(searchTerm.users.toLowerCase());
-    
+
     const userHotelId = typeof user.assignedHotelId === 'object' ? (user.assignedHotelId as any)._id : user.assignedHotelId;
     const matchesHotel = filterHotel ? userHotelId === filterHotel : true;
 
@@ -217,11 +221,11 @@ const Admin = () => {
 
   const filteredDepartments = departments.filter(dept => {
     const matchesSearch = dept.name.toLowerCase().includes(searchTerm.departments.toLowerCase()) ||
-    getHotelName(dept.hotelId).toLowerCase().includes(searchTerm.departments.toLowerCase());
-    
+      getHotelName(dept.hotelId).toLowerCase().includes(searchTerm.departments.toLowerCase());
+
     const deptHotelId = typeof dept.hotelId === 'object' ? (dept.hotelId as any)._id : dept.hotelId;
     const matchesHotel = filterHotel ? deptHotelId === filterHotel : true;
-    
+
     return matchesSearch && matchesHotel;
   });
 
@@ -233,8 +237,8 @@ const Admin = () => {
   const getFilteredDeptsForSelect = () => {
     if (!filterHotel) return departments;
     return departments.filter(d => {
-        const hId = typeof d.hotelId === 'object' ? (d.hotelId as any)._id : d.hotelId;
-        return hId === filterHotel;
+      const hId = typeof d.hotelId === 'object' ? (d.hotelId as any)._id : d.hotelId;
+      return hId === filterHotel;
     });
   };
 
@@ -250,9 +254,9 @@ const Admin = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         {/* Evenly spread tabs as requested */}
         <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="hotels">Hotels</TabsTrigger>
-            <TabsTrigger value="departments">Departments</TabsTrigger>
+          <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="hotels">Hotels</TabsTrigger>
+          <TabsTrigger value="departments">Departments</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-4 mt-0">
@@ -275,7 +279,7 @@ const Admin = () => {
                     className="pl-10"
                   />
                 </div>
-                
+
                 <Select value={filterHotel || (hotels.length > 0 ? hotels[0]._id : '')} onValueChange={(v) => { setFilterHotel(v); setFilterDept('all'); }}>
                   <SelectTrigger className="w-full md:w-[200px]">
                     <SelectValue placeholder="Select Hotel" />
@@ -286,7 +290,7 @@ const Admin = () => {
                 </Select>
 
                 <Select value={filterDept} onValueChange={setFilterDept} disabled={!filterHotel}>
-                   <SelectTrigger className="w-full md:w-[200px]">
+                  <SelectTrigger className="w-full md:w-[200px]">
                     <SelectValue placeholder="All Departments" />
                   </SelectTrigger>
                   <SelectContent>
@@ -296,51 +300,60 @@ const Admin = () => {
                 </Select>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full whitespace-nowrap text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="text-left p-3 font-medium min-w-[120px]">Username</th>
-                      <th className="text-left p-3 font-medium min-w-[150px] md:w-1/4">Full Name</th>
-                      <th className="text-left p-3 font-medium min-w-[150px] md:w-1/4">Role</th>
-                      <th className="text-left p-3 font-medium min-w-[150px] md:w-1/4">Department</th>
-                      <th className="text-center p-3 font-medium min-w-[100px]">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredUsers.map((user) => (
-                      <tr key={user._id} className="border-b hover:bg-muted/50 transition-colors">
-                        <td className="p-3 font-medium">{user.username}</td>
-                        <td className="p-3 truncate max-w-[150px] md:max-w-xs" title={getHotelName(user.name)}>{user.name}</td>
-                        <td className="p-3 truncate max-w-[150px] md:max-w-xs" title={getHotelName(user.role)}>{user.role}</td>
-                        <td className="p-3 truncate max-w-[150px] md:max-w-xs" title={getDepartmentName(user.assignedDepartmentId)}>
-                          {getDepartmentName(user.assignedDepartmentId)}
-                        </td>
-                        <td className="p-3 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <Button 
-                              size="icon" 
-                              variant="ghost" 
-                              className="h-8 w-8"
-                              onClick={() => handleEditUser(user)}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button 
-                              size="icon" 
-                              variant="ghost" 
-                              className="h-8 w-8 text-danger hover:text-danger"
-                              onClick={() => handleDeleteUser(user)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </td>
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                  <Loader2 className="w-10 h-10 animate-spin text-primary/60 mb-4" />
+                  <p className="text-sm font-medium">Loading users...</p>
+                </div>
+              ) : filteredUsers.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">No users found.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full whitespace-nowrap text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-3 font-medium min-w-[120px]">Username</th>
+                        <th className="text-left p-3 font-medium min-w-[150px] md:w-1/4">Full Name</th>
+                        <th className="text-left p-3 font-medium min-w-[150px] md:w-1/4">Role</th>
+                        <th className="text-left p-3 font-medium min-w-[150px] md:w-1/4">Department</th>
+                        <th className="text-center p-3 font-medium min-w-[100px]">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {filteredUsers.map((user) => (
+                        <tr key={user._id} className="border-b hover:bg-muted/50 transition-colors">
+                          <td className="p-3 font-medium">{user.username}</td>
+                          <td className="p-3 truncate max-w-[150px] md:max-w-xs" title={getHotelName(user.name)}>{user.name}</td>
+                          <td className="p-3 truncate max-w-[150px] md:max-w-xs" title={getHotelName(user.role)}>{user.role}</td>
+                          <td className="p-3 truncate max-w-[150px] md:max-w-xs" title={getDepartmentName(user.assignedDepartmentId)}>
+                            {getDepartmentName(user.assignedDepartmentId)}
+                          </td>
+                          <td className="p-3 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8"
+                                onClick={() => handleEditUser(user)}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-danger hover:text-danger"
+                                onClick={() => handleDeleteUser(user)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -367,60 +380,69 @@ const Admin = () => {
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full whitespace-nowrap text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="text-left p-3 font-medium min-w-[150px]">Hotel Name</th>
-                      <th className="text-left p-3 font-medium min-w-[150px]">Location</th>
-                      <th className="text-left p-3 font-medium min-w-[120px]">Total Departments</th>
-                      <th className="text-center p-3 font-medium min-w-[100px]">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredHotels.map((hotel) => {
-
-                      const deptCount = departments.filter(
-                        (dept) => {
-                          const hId = typeofQHId(dept.hotelId);
-                          return hId === hotel._id;
-                        }
-                      ).length;
-                      
-                      // Helper to avoid complex expression in filter
-                      function typeofQHId(id: any) { return typeof id === 'object' ? id._id : id; }
-
-                      return (
-                      <tr key={hotel._id} className="border-b hover:bg-muted/50 transition-colors">
-                        <td className="p-3 font-medium">{hotel.name}</td>
-                        <td className="p-3">{hotel.location}</td>
-                        <td className="p-3">{deptCount}</td>
-                        <td className="p-3 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <Button 
-                              size="icon" 
-                              variant="ghost" 
-                              className="h-8 w-8"
-                              onClick={() => handleEditHotel(hotel)}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button 
-                              size="icon" 
-                              variant="ghost" 
-                              className="h-8 w-8 text-danger hover:text-danger"
-                              onClick={() => handleDeleteHotel(hotel)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </td>
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                  <Loader2 className="w-10 h-10 animate-spin text-primary/60 mb-4" />
+                  <p className="text-sm font-medium">Loading hotels...</p>
+                </div>
+              ) : filteredHotels.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">No hotels found.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full whitespace-nowrap text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-3 font-medium min-w-[150px]">Hotel Name</th>
+                        <th className="text-left p-3 font-medium min-w-[150px]">Location</th>
+                        <th className="text-left p-3 font-medium min-w-[120px]">Total Departments</th>
+                        <th className="text-center p-3 font-medium min-w-[100px]">Actions</th>
                       </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {filteredHotels.map((hotel) => {
+
+                        const deptCount = departments.filter(
+                          (dept) => {
+                            const hId = typeofQHId(dept.hotelId);
+                            return hId === hotel._id;
+                          }
+                        ).length;
+
+                        // Helper to avoid complex expression in filter
+                        function typeofQHId(id: any) { return typeof id === 'object' ? id._id : id; }
+
+                        return (
+                          <tr key={hotel._id} className="border-b hover:bg-muted/50 transition-colors">
+                            <td className="p-3 font-medium">{hotel.name}</td>
+                            <td className="p-3">{hotel.location}</td>
+                            <td className="p-3">{deptCount}</td>
+                            <td className="p-3 text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8"
+                                  onClick={() => handleEditHotel(hotel)}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 text-danger hover:text-danger"
+                                  onClick={() => handleDeleteHotel(hotel)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -455,48 +477,57 @@ const Admin = () => {
                 </Select>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full whitespace-nowrap text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="text-left p-3 font-medium min-w-[150px]">Department Name</th>
-                      <th className="text-left p-3 font-medium min-w-[150px]">Hotel Name</th>
-                      <th className="text-center p-3 font-medium min-w-[100px]">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredDepartments.map((department) => {
-                      const hotelName = getHotelName(department.hotelId)
-                      return (
-                      <tr key={department._id} className="border-b hover:bg-muted/50 transition-colors">
-                        <td className="p-3 font-medium">{department.name}</td>
-                        <td className="p-3">{hotelName}</td>
-                        <td className="p-3 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <Button 
-                              size="icon" 
-                              variant="ghost" 
-                              className="h-8 w-8"
-                              onClick={() => handleEditDepartment(department)}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button 
-                              size="icon" 
-                              variant="ghost" 
-                              className="h-8 w-8 text-danger hover:text-danger"
-                              onClick={() => handleDeleteDepartment(department)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </td>
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                  <Loader2 className="w-10 h-10 animate-spin text-primary/60 mb-4" />
+                  <p className="text-sm font-medium">Loading departments...</p>
+                </div>
+              ) : filteredDepartments.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">No departments found.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full whitespace-nowrap text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-3 font-medium min-w-[150px]">Department Name</th>
+                        <th className="text-left p-3 font-medium min-w-[150px]">Hotel Name</th>
+                        <th className="text-center p-3 font-medium min-w-[100px]">Actions</th>
                       </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {filteredDepartments.map((department) => {
+                        const hotelName = getHotelName(department.hotelId)
+                        return (
+                          <tr key={department._id} className="border-b hover:bg-muted/50 transition-colors">
+                            <td className="p-3 font-medium">{department.name}</td>
+                            <td className="p-3">{hotelName}</td>
+                            <td className="p-3 text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8"
+                                  onClick={() => handleEditDepartment(department)}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 text-danger hover:text-danger"
+                                  onClick={() => handleDeleteDepartment(department)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

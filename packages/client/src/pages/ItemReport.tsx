@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Eye } from 'lucide-react';
+import { Eye, Loader2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -75,10 +75,14 @@ const ItemReport = ({ filters }: ItemProps) => {
 
       if (user?.role === UserRole.SUPER_ADMIN) {
         if (selectedHotelId) params.hotelId = selectedHotelId;
-        if (selectedDepartment) params.departmentId = selectedDepartment
-      } else {
+        if (selectedDepartment) params.departmentId = selectedDepartment;
+      } else if (user?.role === UserRole.MANAGER) {
         params.hotelId = user?.assignedHotelId;
-        params.departmentId = selectedDepartment;
+        if (selectedDepartment) params.departmentId = selectedDepartment;
+      } else {
+        // HODs are strictly locked to their assigned department!
+        params.hotelId = user?.assignedHotelId;
+        params.departmentId = user?.assignedDepartmentId;
       }
 
       const res = await apiClient.get('/items', {
@@ -97,10 +101,6 @@ const ItemReport = ({ filters }: ItemProps) => {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (selectedHotelId || selectedDepartment !== undefined) loadItems();
-  }, [selectedHotelId, selectedDepartment, user?.assignedHotelId]);
 
   const fetchReport = async () => {
     if (!selectedItem) return;
@@ -129,8 +129,27 @@ const ItemReport = ({ filters }: ItemProps) => {
     }
   };
 
+  // 1. WATCH FOR HOTEL/DEPT CHANGES & LOAD ITEMS
   useEffect(() => {
-    if (selectedItem) fetchReport();
+    setSelectedItem('');
+    setData([]);
+
+    if ((user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.MANAGER) && !selectedHotelId) {
+      return;
+    }
+
+    loadItems();
+
+  }, [selectedHotelId, selectedDepartment, user?.assignedHotelId, user?.assignedDepartmentId]);
+
+
+  useEffect(() => {
+    if (!selectedItem || !from || !to) {
+      return;
+    }
+
+    fetchReport();
+
   }, [selectedItem, from, to]);
 
   return (
@@ -148,7 +167,7 @@ const ItemReport = ({ filters }: ItemProps) => {
 
           {/* Flexible Filter Container */}
           <div className="flex flex-col sm:flex-row gap-4 items-end justify-between w-full">
-            
+
             {/* Item Selector (Left) */}
             <div className="w-full sm:w-auto sm:min-w-[240px] sm:max-w-[300px]">
               <label className="text-xs text-muted-foreground block mb-1.5 ml-1">Item</label>
@@ -246,7 +265,11 @@ const ItemReport = ({ filters }: ItemProps) => {
 
       <CardContent>
         {reportsLoading ? (
-          <p className="py-8 text-center text-muted-foreground">Loading report...</p>
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <Loader2 className="w-10 h-10 animate-spin text-primary/60 mb-4" />
+            <p className="text-sm font-medium">Item Report Loading...</p>
+            <p className="text-xs opacity-70 mt-1">This will just take a second</p>
+          </div>
         ) : data.length === 0 ? (
           <p className="text-muted-foreground py-8 text-center">
             No report data available for the selected item or department.
@@ -274,7 +297,7 @@ const ItemReport = ({ filters }: ItemProps) => {
               </thead>
               <tbody>
                 {data.map((row, idx) => (
-                  <tr key={idx} 
+                  <tr key={idx}
                     className={`
                       border-b cursor-pointer whitespace-nowrap
                       ${row.shortage > 0 ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-muted/50'}
@@ -286,11 +309,10 @@ const ItemReport = ({ filters }: ItemProps) => {
                         visibleColumns.includes(col.key) && (
                           <td
                             key={col.key}
-                            className={`p-2 text-right ${
-                              col.key === 'damages' && row[col.key] > 0
+                            className={`p-2 text-right ${col.key === 'damages' && row[col.key] > 0
                                 ? 'text-danger font-semibold'
                                 : ''
-                            }`}
+                              }`}
                           >
                             {row[col.key] ?? 0}
                           </td>
@@ -299,11 +321,10 @@ const ItemReport = ({ filters }: ItemProps) => {
                     {mandatoryColumns.map((col) => (
                       <td
                         key={col.key}
-                        className={`p-2 text-right ${
-                          col.key === 'shortage' && row.shortage > 0
+                        className={`p-2 text-right ${col.key === 'shortage' && row.shortage > 0
                             ? 'text-red-600 font-semibold'
                             : ''
-                        }`}
+                          }`}
                       >
                         {row[col.key] ?? 0}
                       </td>

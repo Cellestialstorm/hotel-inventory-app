@@ -2,6 +2,7 @@ import { createContext, useState, useContext, ReactNode, useEffect } from 'react
 import { IClientUser } from '@hotel-inventory/shared';
 import apiClient, { storeAccessToken, clearAccessToken } from '@/api/axios';
 import { useNavigate } from 'react-router-dom';
+import SplashScreen from '@/components/SplashScreen';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -160,7 +161,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider value={{ ...authState, login, logout, setAccessToken, setSelectedHotelId, selectedHotelId }}>
-      {!authState.isLoading ? children : <div>Loading...</div>}
+      {!authState.isLoading ? children : <SplashScreen />}
     </AuthContext.Provider>
   );
 };

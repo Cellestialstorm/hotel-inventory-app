@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertTriangle, Package, Building2, Flame, Plus, Minus, Trash2, ArrowRightLeft, Search } from 'lucide-react';
+import { AlertTriangle, Package, Building2, Flame, Plus, Minus, Trash2, ArrowRightLeft, Search, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '@/api/axios';
 import { toast } from 'sonner';
@@ -167,7 +167,11 @@ const Dashboard = () => {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground">Loading dashboard...</div>
+        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="w-10 h-10 animate-spin text-primary/60 mb-4" />
+          <p className="text-sm font-medium">Dashboard Loading...</p>
+          <p className="text-xs opacity-70 mt-1">This will just take a second</p>
+        </div>
       ) : (
         <>
           {/* QUICK ACTIONS ROW */}

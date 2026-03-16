@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import apiClient from '@/api/axios';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
@@ -18,22 +18,19 @@ const ReorderReport = ({ filters }: ReportProps) => {
   const { user, accessToken, selectedHotelId } = useAuth();
   const [reorderItems, setReorderItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [itemsLoading, setItemsLoading] = useState(false);
 
   const fetchReorderItems = async (isInitial = false) => {
     if (isInitial) setLoading(true);
-    else setItemsLoading(true);
 
     try {
-      if (user?.role === UserRole.ADMIN && !selectedHotelId) {
+      if (user?.role === UserRole.SUPER_ADMIN && !selectedHotelId) {
         setReorderItems([]);
-        if (isInitial) setLoading(true);
-        else setItemsLoading(true);
+        setLoading(false); 
         return;
       }
 
       const params: any = {};
-      if (user?.role === UserRole.ADMIN) params.hotelId = selectedHotelId;
+      if (user?.role === UserRole.SUPER_ADMIN) params.hotelId = selectedHotelId;
       else {
         if (user?.assignedHotelId) params.hotelId = user.assignedHotelId;
       }
@@ -41,7 +38,7 @@ const ReorderReport = ({ filters }: ReportProps) => {
       if (selectedDepartment !== 'all') {
         params.departmentId = selectedDepartment;
       }
-      
+
       const res = await apiClient.get('/items', {
         headers: { Authorization: `Bearer ${accessToken}` },
         params,
@@ -52,18 +49,13 @@ const ReorderReport = ({ filters }: ReportProps) => {
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to load items');
     } finally {
-      if (isInitial) setLoading(false);
-      else setItemsLoading(false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchReorderItems(true);
-  }, [selectedHotelId, user?.assignedHotelId]);
-
-  useEffect(() => {
-    fetchReorderItems(false);
-  }, [selectedDepartment]);
+  }, [selectedHotelId, user?.assignedHotelId, selectedDepartment]);
 
   const getUrgencyBadge = (item: any) => {
     const shortage = item.minStock - item.currentStock;
@@ -75,7 +67,7 @@ const ReorderReport = ({ filters }: ReportProps) => {
 
   return (
     <div className="space-y-6">
-      <Card> 
+      <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -93,7 +85,11 @@ const ReorderReport = ({ filters }: ReportProps) => {
 
         <CardContent>
           {loading ? (
-            <div className="text-center py-12">Loading initial data...</div>
+            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <Loader2 className="w-10 h-10 animate-spin text-primary/60 mb-4" />
+              <p className="text-sm font-medium">Report Loading...</p>
+              <p className="text-xs opacity-70 mt-1">This will just take a second</p>
+            </div>
           ) : reorderItems.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">✅</div>
@@ -106,11 +102,6 @@ const ReorderReport = ({ filters }: ReportProps) => {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              {itemsLoading && (
-                <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              )}
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
