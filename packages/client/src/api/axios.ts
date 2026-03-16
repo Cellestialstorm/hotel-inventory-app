@@ -108,8 +108,12 @@ apiClient.interceptors.response.use(
       }
     }
 
+    const originalUrl = error.config?.url || '';
+    const isSilentRoute = originalUrl.includes('/auth/refresh-token') || originalUrl.includes('/auth/me') || originalUrl.includes('/auth/login');
+
     console.error('Api Error:', error.response?.data || error.message);
-    if (error.response?.status !== 401) {
+
+    if (!isSilentRoute && error.response?.status !== 401) {
       toast.error(error.response?.data?.message || 'An error occurred. Please try again later.');
     }
 
