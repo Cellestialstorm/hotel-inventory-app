@@ -5,6 +5,10 @@ import logger from "@/utils/logger";
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || 'your_access_secret_key_dev';
 
+if (process.env.NODE_ENV === 'production' && (!process.env.ACCESS_TOKEN_SECRET || ACCESS_TOKEN_SECRET === 'your_access_secret_key_dev')) {
+    console.error('🛑 FATAL ERROR: ACCESS_TOKEN_SECRET is missing or insecure in production environment! (auth.middleware.ts)');
+    process.exit(1);
+}
 
 /**
  * Middleware to authenticate requests using JWT (Access Token).

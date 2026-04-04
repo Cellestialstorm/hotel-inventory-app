@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import logger from '@/utils/logger';
 
 /**
  * Handles the connection to the MongoDB database.
@@ -26,39 +27,28 @@ export const connectDB = () => {
         retryWrites: true,
     };
 
-    /**
-     * A function to encapsulate the connection logic, allowing it to be reused
-     * for initial connection and for retries upon disconnection.
-     */
-    const attemptConnection = () => {
-      mongoose.connect(mongoUrl, options)
-        .then(() => console.log('✅ MongoDB connection established successfully.'))
-        .catch((error) => {
-            // Log the error without exiting, as the 'disconnected' handler will manage retries.
-            console.error('❌ MongoDB connection failed. Retrying in 5 seconds...', error.message);
-        });
-    }
+    logger.info('Attempting to connect to MongoDB...');
+
+    mongoose.connect(mongoUrl, options)
+      .then(() => logger.info('✅ MongoDB connection established successfully.'))
+      .catch((error) => {
+          logger.error(`❌ Initial MongoDB connection failed: ${error.message}`);
+      });
 
     // --- Mongoose Connection Event Listeners ---
 
     // Fired when the connection is successfully re-established.
     mongoose.connection.on('reconnected', () => {
-        console.log('✅ Reconnected to MongoDB.');
+        logger.info('✅ Reconnected to MongoDB.');
     });
 
     // Fired when Mongoose disconnects from the database.
     mongoose.connection.on('disconnected', () => {
-        console.log('⛔ Disconnected from MongoDB. Attempting to reconnect...');
-        // Wait 5 seconds before attempting to reconnect to avoid spamming the server.
-        setTimeout(attemptConnection, 5000);
+        logger.warn('⛔ Disconnected from MongoDB. Attempting to reconnect...');
     });
 
     // Fired if an error occurs on the connection.
     mongoose.connection.on('error', (err) => {
-        console.error('❌ MongoDB connection error:', err.message);
+        logger.error('❌ MongoDB connection error:', err.message);
     });
-
-    // Initiate the first connection attempt.
-    console.log('Attempting to connect to MongoDB...');
-    attemptConnection();
 };

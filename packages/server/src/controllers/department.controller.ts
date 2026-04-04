@@ -22,7 +22,7 @@ const createDepartment = asyncHandler(async (req: Request, res: Response) => {
  */
 
 const getAllDepartments = asyncHandler(async (req: Request, res: Response) => {
-    let hotelId = req.params.hotelId || req.query.hotelId as string | undefined;
+    let hotelId = (req.params.hotelId || req.query.hotelId) as string | undefined;
 
     if (req.user?.role === UserRole.MANAGER || req.user?.role === UserRole.HOD) {
         hotelId = req.user.assignedHotelId;
@@ -38,7 +38,7 @@ const getAllDepartments = asyncHandler(async (req: Request, res: Response) => {
  */
 
 const getDepartmentById = asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id  = req.params.id as string;
 
     if (req.user?.role === UserRole.HOD && req.user.assignedDepartmentId !== id) {
         throw new ApiError(403, 'Forbidden: You cannot view other departments', 'FORBIDDEN');
@@ -61,7 +61,7 @@ const getDepartmentById = asyncHandler(async (req: Request, res: Response) => {
 
 const updateDepartment = asyncHandler(async (req: Request, res: Response) => {
     // TODO: Add validation
-    const { id } = req.params;
+    const id = req.params.id as string;
     const department = await DepartmentService.updateDepartment(id, req.body);
     if (!department) {
         throw new ApiError(404, 'Department not found', 'DEPARTMENT_NOT_FOUND');
@@ -75,7 +75,7 @@ const updateDepartment = asyncHandler(async (req: Request, res: Response) => {
  */
 
 const deleteDepartment = asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const success = await DepartmentService.deleteDepartment(id);
     if (!success) {
         throw new ApiError(404, 'Department not found', 'DEPARTMENT_NOT_FOUND');

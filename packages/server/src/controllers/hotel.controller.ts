@@ -38,7 +38,7 @@ const getAllHotels = asyncHandler(async (req: Request, res: Response) => {
  */
 
 const getHotelById = asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     // Security check: Only SUPER_ADMIN or users assigned to THIS hotel can view it
     if (req.user?.role !== UserRole.SUPER_ADMIN && req.user?.assignedHotelId?.toString() !== id) {
@@ -56,7 +56,7 @@ const getHotelById = asyncHandler(async (req: Request, res: Response) => {
 
 const updateHotel = asyncHandler(async (req: Request, res: Response) => {
     //TODO: Add validation middleware
-    const { id } = req.params;
+    const id = req.params.id as string;
     const hotel = await HotelService.updateHotel(id, req.body);
     if (!hotel) {
         throw new ApiError(404, 'Hotel not found', 'HOTEL_NOT_FOUND');
@@ -70,7 +70,7 @@ const updateHotel = asyncHandler(async (req: Request, res: Response) => {
  */
 
 const deleteHotel = asyncHandler(async (req: Request, res: Response) => { 
-    const { id } = req.params;
+    const id = req.params.id as string;
     const success = await HotelService.deleteHotel(id);
     if (!success) {
         throw new ApiError(404, 'Hotel not found', 'HOTEL_NOT_FOUND');

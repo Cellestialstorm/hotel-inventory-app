@@ -47,7 +47,7 @@ export const editTransaction = asyncHandler(async (req: Request, res: Response) 
 
     // Pass the user object so the service can calculate the time-lock!
     const updatedTx = await TransactionService.updateTransaction(
-        id, 
+        id  as string, 
         { userId: req.user?.userId || '', role: (req.user?.role as any) || '', username: req.user?.username || '' }, 
         { quantity: Number(quantity), reason }
     );

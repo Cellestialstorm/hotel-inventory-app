@@ -13,13 +13,13 @@ export const createItem = asyncHandler(async (req: Request, res: Response) => {
 
 export const updateItem = asyncHandler(async (req: Request, res: Response) => {
   if (req.user?.role !== 'SUPER_ADMIN') throw new Error('Forbidden');
-  const updated = await ItemService.updateItem(req.params.id, req.body);
+  const updated = await ItemService.updateItem(req.params.id as string, req.body);
   res.json(new ApiResponse(200, updated, 'Item updated'));
 });
 
 export const deleteItem = asyncHandler(async (req: Request, res: Response) => {
   if (req.user?.role !== UserRole.SUPER_ADMIN && req.user?.role !== UserRole.MANAGER) throw new Error('Forbidden');
-  await ItemService.deleteItem(req.params.id);
+  await ItemService.deleteItem(req.params.id as string);
   res.json(new ApiResponse(200, null, 'Item deleted'));
 });
 

@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-// import compression from 'compression';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import ApiError from './utils/ApiError';
 
@@ -30,14 +30,14 @@ const allowedOrigins = [
 
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 
-// Set various HTTP headers for security
+// HTTP headers for security
 app.use(helmet());
 
 // HTTP request logger (consider 'combined' format for production, linking with Winston later)
 app.use(morgan('dev'));
 
 // Parse incoming JSON requests
-app.use(express.json({ limit: '16kb' })); // Example limit
+app.use(express.json({ limit: '16kb' }));
 
 // Parse URL-encoded requests
 app.use(express.urlencoded({ extended: true, limit: '16kb' }));
@@ -49,7 +49,7 @@ app.use(cookieParser());
 app.use('/api', generalLimiter);
 
 // // Compress responses
-// app.use(compression()); // Compress responses
+app.use(compression() as express.RequestHandler);
 
 // --- Routes ---
 

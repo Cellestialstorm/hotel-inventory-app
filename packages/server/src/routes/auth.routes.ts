@@ -3,7 +3,7 @@ import express from 'express';
 import { AuthController } from '../controllers/auth.controller';
 import { authenticateToken } from '../middleware/auth.middleware';
 import { checkSuperAdminOnly } from '../middleware/roleCheck.middleware';
-import { authLimiter } from '../config/rateLimiters'; // Import the specific rate limiter
+import { authLimiter } from '../config/rateLimiters';
 
 const router = express.Router();
 
@@ -15,7 +15,7 @@ router.post('/refresh-token', authLimiter, AuthController.refreshToken);
 router.post('/logout', AuthController.logout);
 
 // Admin-only user registration
-router.post('/register', authenticateToken, checkSuperAdminOnly, AuthController.register);
+router.post('/register', authenticateToken, checkSuperAdminOnly, authLimiter, AuthController.register);
 
 router.get('/me', authenticateToken, AuthController.getCurrentUser);
 

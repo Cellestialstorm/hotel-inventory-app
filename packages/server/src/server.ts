@@ -8,7 +8,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 // --- Imports (after dotenv config) ---
 import app from './app'; // Import the configured Express app
 import { connectDB } from './config/database';
-// TODO: Import Winston logger instance
+import logger from './utils/logger';
 
 // --- Database Connection ---
 connectDB(); // Initialize the database connection
@@ -18,34 +18,32 @@ const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, () => {
   // TODO: Use Winston logger instead of console.log
-  console.log(`🚀 Server is running on port ${PORT}`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
+  logger.info(`🚀 Server is running on port ${PORT}`);
+  logger.info(`🔗 Health check: http://localhost:${PORT}/api/health`);
 });
 
 // --- Graceful Shutdown Handling (Optional but Recommended) ---
 process.on('unhandledRejection', (err) => {
-  console.error('UNHANDLED REJECTION! 💥 Shutting down...', err);
-  // TODO: Use Winston logger
+  logger.error('UNHANDLED REJECTION! 💥 Shutting down...', err);
   server.close(() => {
     process.exit(1);
   });
 });
 
 process.on('SIGTERM', () => {
-  console.log('👋 SIGTERM RECEIVED. Shutting down gracefully');
-  // TODO: Use Winston logger
+  logger.info('👋 SIGTERM RECEIVED. Shutting down gracefully');
+  
   server.close(() => {
-    console.log('💥 Process terminated!');
-    // Close DB connection if needed here
+    logger.info('💥 Process terminated!');
+    
   });
 });
 
 process.on('SIGINT', () => {
-  console.log('👋 SIGINT RECEIVED. Shutting down gracefully');
-   // TODO: Use Winston logger
+  logger.info('👋 SIGINT RECEIVED. Shutting down gracefully');
+  
   server.close(() => {
-    console.log('💥 Process terminated!');
-     // Close DB connection if needed here
-    process.exit(0); // Explicitly exit for SIGINT
+    logger.info('💥 Process terminated!');
+    process.exit(0);
   });
 });

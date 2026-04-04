@@ -6,6 +6,20 @@ const REFRESH_TOKEN_SECRET: Secret = process.env.REFRESH_TOKEN_SECRET || 'add re
 const ACCESS_TOKEN_EXPIRY = process.env.ACCESS_TOKEN_EXPIRY || '15m';
 const REFRESH_TOKEN_EXPIRY = process.env.REFRESH_TOKEN_EXPIRY || '7d';
 
+if (process.env.NODE_ENV === 'production') {
+    if (
+        !process.env.ACCESS_TOKEN_SECRET || 
+        !process.env.REFRESH_TOKEN_SECRET ||
+        ACCESS_TOKEN_SECRET === 'your_access_secret_key_dev' || 
+        REFRESH_TOKEN_SECRET === 'your_refresh_secret_key_dev'
+    ) {
+        console.error('🛑 FATAL ERROR: JWT secrets are missing or using insecure default development values in a production environment! Set ACCESS_TOKEN_SECRET and REFRESH_TOKEN_SECRET.');
+        process.exit(1);
+    }
+} else if (ACCESS_TOKEN_SECRET === 'your_access_secret_key_dev' || REFRESH_TOKEN_SECRET === 'your_refresh_secret_key_dev') {
+    console.warn('⚠️ WARNING: JWT secrets are using default development values.');
+}
+
 if (ACCESS_TOKEN_SECRET === 'your_access_secret_key_dev' || REFRESH_TOKEN_SECRET === 'your_refresh_secret_key_dev') {
     console.warn('JWT secrets are using default development values. Set Access_TOKEN_SECRET and REFRESH_TOKEN_SECRET environment variables to production values');
 }
